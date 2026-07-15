@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-vibe="pastel">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Echo Debt</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="frame">
+    <canvas id="game" width="960" height="640"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-col left">
+        <div class="brand">ECHO DEBT</div>
+        <div class="stat-row">
+          <div id="lives" class="lives"></div>
+          <div id="slots" class="slots">
+            <button class="slot" id="slot0" type="button" title="Slot 1">
+              <span class="slot-key">1</span>
+              <canvas class="slot-icon" width="28" height="28"></canvas>
+            </button>
+            <button class="slot" id="slot1" type="button" title="Slot 2">
+              <span class="slot-key">2</span>
+              <canvas class="slot-icon" width="28" height="28"></canvas>
+            </button>
+          </div>
+        </div>
+        <div id="modeLabel" class="sub">CAMPAIGN</div>
+      </div>
+
+      <div class="hud-col center">
+        <div id="timer">0:20</div>
+        <div class="meter"><div id="timerFill"></div></div>
+        <div id="levelLabel" class="sub">LEVEL 1 / 10</div>
+      </div>
+
+      <div class="hud-col right">
+        <div id="debtLabel">DEBT 0</div>
+        <div id="escalation" class="sub"></div>
+      </div>
+    </div>
+
+    <div id="previewBanner" class="hidden">GET READY</div>
+
+    <div id="overlay" class="show">
+      <div class="menu" id="menuRoot">
+        <div class="menu-art" aria-hidden="true"></div>
+        <h1>ECHO DEBT</h1>
+        <p class="tag">Cotton candy chaos. Your clones never leave.</p>
+
+        <div id="mainStep">
+          <div class="mode-grid three">
+            <button class="mode-card" id="btnCampaign" type="button">
+              <span class="mode-kicker">STORY ARC</span>
+              <span class="mode-title">CAMPAIGN</span>
+              <span class="mode-desc">Beat 10 levels. Heat climbs exponentially.</span>
+            </button>
+            <button class="mode-card alt" id="btnEndless" type="button">
+              <span class="mode-kicker">NO CEILING</span>
+              <span class="mode-title">ENDLESS</span>
+              <span class="mode-desc">Survive. Escalation every 15 seconds.</span>
+            </button>
+            <button class="mode-card soft" id="btnCharacters" type="button">
+              <span class="mode-kicker">LOOKS</span>
+              <span class="mode-title">CHARACTERS</span>
+              <span class="mode-desc">Pick who orbits the debt.</span>
+            </button>
+          </div>
+          <div class="controls">
+            <div><kbd>A</kbd>/<kbd>D</kbd> or <kbd>←</kbd>/<kbd>→</kbd> spin · <kbd>W</kbd>/<kbd>S</kbd> or <kbd>↑</kbd>/<kbd>↓</kbd> ring (hop on rim) · <kbd>SPACE</kbd> hop</div>
+            <div>Two mystery candies each level · <kbd>1</kbd>–<kbd>4</kbd> held slots</div>
+          </div>
+        </div>
+
+        <div id="charStep" class="hidden">
+          <button class="back-link" id="btnBackMain" type="button">← back</button>
+          <p class="tag" style="margin-bottom:12px">Choose your runner</p>
+          <div id="charGrid" class="char-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pick" class="hidden">
+      <div class="panel info-panel">
+        <div class="info-kicker" id="infoKind">CANDY</div>
+        <canvas id="infoIcon" width="64" height="64"></canvas>
+        <h2 id="infoName">NAME</h2>
+        <p class="tag" id="infoDesc">What it does.</p>
+        <p class="info-hint" id="infoHint"></p>
+        <button class="btn" id="infoOk" type="button">GOT IT</button>
+      </div>
+    </div>
+
+    <div id="endScreen" class="hidden">
+      <div class="panel">
+        <h2 id="endTitle">DEBT DEFAULT</h2>
+        <p id="endTag" class="tag"></p>
+        <button class="btn" id="endMenu" type="button">MAIN MENU</button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
