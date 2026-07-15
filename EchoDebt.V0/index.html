@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Echo Debt</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="800" height="800"></canvas>
+    <div id="hud">
+      <span id="level-label">Level 1</span>
+      <span id="lives-label">Lives: 3</span>
+      <span id="nodes-label">Nodes: 0/1</span>
+    </div>
+    <div id="overlay" class="visible">
+      <h1>ECHO DEBT</h1>
+      <p class="tagline">Orbit. Flip. Survive.</p>
+      <div class="instructions">
+        <p><kbd>←</kbd> <kbd>→</kbd> or <kbd>Space</kbd> — reverse direction</p>
+        <p>Collect all nodes. Avoid center pulses.</p>
+      </div>
+      <button id="start-btn">Start Game</button>
+    </div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
