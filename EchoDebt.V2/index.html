@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en" data-vibe="frost">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Echo Debt</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Outfit:wght@500;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="frame">
+    <canvas id="game" width="960" height="640"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-col left">
+        <div class="brand">ECHO DEBT</div>
+        <div class="stat-row">
+          <div id="lives" class="lives"></div>
+          <div id="slots" class="slots">
+            <button class="slot" id="slot0" type="button" title="Slot 1">
+              <span class="slot-key">1</span>
+              <canvas class="slot-icon" width="28" height="28"></canvas>
+            </button>
+            <button class="slot" id="slot1" type="button" title="Slot 2">
+              <span class="slot-key">2</span>
+              <canvas class="slot-icon" width="28" height="28"></canvas>
+            </button>
+          </div>
+        </div>
+        <div id="modeLabel" class="sub">CAMPAIGN</div>
+      </div>
+
+      <div class="hud-col center">
+        <div id="timer">0:20</div>
+        <div class="meter"><div id="timerFill"></div></div>
+        <div id="levelLabel" class="sub">LEVEL 1 / 10</div>
+      </div>
+
+      <div class="hud-col right">
+        <div id="debtLabel">DEBT 0</div>
+        <div id="escalation" class="sub"></div>
+      </div>
+    </div>
+
+    <div id="superHud" class="hidden" title="Character super (Space)">
+      <div class="super-ring">
+        <canvas id="superIcon" width="56" height="56"></canvas>
+        <div id="superCdRing"></div>
+      </div>
+      <div class="super-meta">
+        <div id="superKey">SPACE</div>
+        <div id="superName">—</div>
+        <div id="superCdLabel">READY</div>
+      </div>
+    </div>
+
+    <div id="previewBanner" class="hidden">GET READY</div>
+
+    <div id="overlay" class="show synth-menu">
+      <div class="menu" id="menuRoot">
+        <div class="menu-art" aria-hidden="true"></div>
+        <h1>ECHO DEBT</h1>
+        <p class="tag">Teal Rift · Ember Ring · Magenta Rise. Bosses at 10 · 20 · 30.</p>
+
+        <div id="mainStep">
+          <div class="mode-grid three">
+            <button class="mode-card" id="btnCampaign" type="button">
+              <span class="mode-kicker">STORY ARC</span>
+              <span class="mode-title">CAMPAIGN</span>
+              <span class="mode-desc">3 worlds · 30 levels · bosses at 10 / 20 / 30.</span>
+            </button>
+            <button class="mode-card alt" id="btnEndless" type="button">
+              <span class="mode-kicker">NO CEILING</span>
+              <span class="mode-title">ENDLESS</span>
+              <span class="mode-desc">Survive. Escalation every 15 seconds.</span>
+            </button>
+            <button class="mode-card soft" id="btnCharacters" type="button">
+              <span class="mode-kicker">LOOKS</span>
+              <span class="mode-title">CHARACTERS</span>
+              <span class="mode-desc">Pick who orbits the debt.</span>
+            </button>
+          </div>
+          <div class="controls">
+            <div><kbd>A</kbd>/<kbd>D</kbd> or <kbd>←</kbd>/<kbd>→</kbd> spin · <kbd>W</kbd>/<kbd>S</kbd> or <kbd>↑</kbd>/<kbd>↓</kbd> ring (hop on rim) · <kbd>SPACE</kbd> character super</div>
+            <div>Candies · <kbd>1</kbd>–<kbd>4</kbd> use · <kbd>I</kbd> inventory · <kbd>Esc</kbd> pause</div>
+          </div>
+        </div>
+
+        <div id="worldStep" class="hidden">
+          <button class="back-link" id="btnBackWorld" type="button">← back</button>
+          <p class="tag worlds-tag">Tutorial · worlds · final boss</p>
+
+          <button class="mode-card tutorial-card" id="btnTutorial" type="button">
+            <span class="mode-kicker">START HERE</span>
+            <span class="mode-title">TUTORIAL</span>
+            <span class="mode-desc">Controls, debt, clones, lasers &amp; candies — the basics before you dive in.</span>
+          </button>
+
+          <div id="worldGrid" class="mode-grid three"></div>
+
+          <div id="finalBossWrap" class="final-boss-wrap">
+            <button class="mode-card soft final-boss-card" id="btnFinalBoss" type="button">
+              <span class="mode-kicker" id="finalBossKicker">AFTER LEVEL 30</span>
+              <span class="mode-title">FINAL BOSS</span>
+              <span class="mode-desc">Planet King · 5 rings · last 3 minutes through 3 phases.</span>
+              <span class="mode-lock" id="finalBossLock">Locked · beat Pulse Core (boss 30)</span>
+            </button>
+          </div>
+
+          <div class="boss-test" id="bossTestPanel">
+            <p class="tag boss-test-label">TEMP · BOSS TEST</p>
+            <div class="boss-test-row">
+              <button class="btn tiny" id="btnBoss1" type="button">BOSS 10</button>
+              <button class="btn tiny" id="btnBoss2" type="button">BOSS 20</button>
+              <button class="btn tiny" id="btnBoss3" type="button">BOSS 30</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="tutorialStep" class="hidden">
+          <button class="back-link" id="btnBackTutorial" type="button">← back to worlds</button>
+          <section class="tutorial-page" aria-label="Tutorial">
+            <div class="tutorial-head">
+              <span class="tutorial-kicker">COTTON FIELD · BASICS</span>
+              <h2 class="tutorial-title">How to play</h2>
+              <p class="tutorial-lead">Short and sweet — enough to survive Teal Rift. The rest you learn by orbiting.</p>
+            </div>
+
+            <article class="tutorial-section">
+              <h3 class="tutorial-label">Controls</h3>
+              <ul class="tutorial-list">
+                <li><kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> / <kbd>→</kbd> — spin around the ring</li>
+                <li><kbd>W</kbd> / <kbd>S</kbd> or <kbd>↑</kbd> / <kbd>↓</kbd> — hop to an inner or outer ring (near the rim)</li>
+                <li><kbd>1</kbd> – <kbd>2</kbd> — use a held candy from your slots</li>
+                <li><kbd>SPACE</kbd> — character super (if you have one)</li>
+                <li><kbd>I</kbd> — peek at inventory</li>
+              </ul>
+            </article>
+
+            <article class="tutorial-section">
+              <h3 class="tutorial-label">The goal</h3>
+              <p>Survive until the timer runs out. You have a few lives — when they hit zero, the run ends.</p>
+              <p><strong>Debt</strong> is how many clones are on the board. Taking a hit usually adds more debt, so staying clean keeps the fight manageable.</p>
+            </article>
+
+            <article class="tutorial-section">
+              <h3 class="tutorial-label">What to watch for</h3>
+              <ul class="tutorial-list">
+                <li>
+                  <span class="tut-dot clone"></span>
+                  <div>
+                    <strong>Clones</strong>
+                    <p>Little copies that orbit the same rings as you. Bumping one costs a life — but that clone pops too, so the board gets a tiny bit cleaner.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tut-dot laser"></span>
+                  <div>
+                    <strong>Lasers</strong>
+                    <p>They telegraph first (a faint line or ring flash), then fire. Move off the path before it locks in. Later worlds get meaner sweeps.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tut-dot rock"></span>
+                  <div>
+                    <strong>Rocks &amp; debris</strong>
+                    <p>Asteroids drift in; shattered pieces can still hurt. Give them space, or clear them with the right candy.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tut-dot candy"></span>
+                  <div>
+                    <strong>Candies</strong>
+                    <p>Powerups sitting on the rings. Grab them as you pass. Some use right away; others go into your slots for later. Read the popup the first time you find a new one.</p>
+                  </div>
+                </li>
+              </ul>
+            </article>
+
+            <article class="tutorial-section tip">
+              <h3 class="tutorial-label">One tip</h3>
+              <p>Hop rings to dodge, don’t only spin. Outer rings feel roomier early — use that until you’re comfortable.</p>
+            </article>
+
+            <button class="btn tutorial-play-btn" id="btnPlayTutorial" type="button">TRY A PRACTICE BEAT</button>
+          </section>
+        </div>
+
+        <div id="charStep" class="hidden">
+          <button class="back-link" id="btnBackMain" type="button">← back</button>
+          <p class="tag" style="margin-bottom:12px">Choose your runner · hover 2s for buff / debuff</p>
+          <div id="charGrid" class="char-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="invPanel" class="hidden">
+      <div class="inv-card">
+        <div class="inv-kicker">INVENTORY · I</div>
+        <div class="inv-hero">
+          <canvas id="invChar" width="72" height="72"></canvas>
+          <div class="inv-hero-text">
+            <div id="invName" class="inv-name">COTTON</div>
+            <div id="invHealth" class="inv-health"></div>
+            <div id="invSuperLine" class="inv-super">Super: —</div>
+          </div>
+        </div>
+        <div class="inv-slots" id="invSlots"></div>
+        <button class="btn" id="invOk" type="button">CLOSE</button>
+      </div>
+    </div>
+
+    <div id="pick" class="hidden">
+      <div class="panel info-panel">
+        <div class="info-kicker" id="infoKind">CANDY</div>
+        <canvas id="infoIcon" width="64" height="64"></canvas>
+        <h2 id="infoName">NAME</h2>
+        <p class="tag" id="infoDesc">What it does.</p>
+        <p class="info-hint" id="infoHint"></p>
+        <button class="btn" id="infoOk" type="button">GOT IT</button>
+      </div>
+    </div>
+
+    <div id="endScreen" class="hidden">
+      <div class="panel">
+        <h2 id="endTitle">DEBT DEFAULT</h2>
+        <p id="endTag" class="tag"></p>
+        <button class="btn" id="endMenu" type="button">MAIN MENU</button>
+      </div>
+    </div>
+
+    <div id="pauseScreen" class="hidden">
+      <div class="panel pause-panel">
+        <h2>PAUSED</h2>
+        <p class="tag">Esc to resume · final boss especially — breathe</p>
+        <div class="pause-actions">
+          <button class="btn" id="pauseResume" type="button">RESUME</button>
+          <button class="btn tiny" id="pauseMenu" type="button">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="charTip" class="char-tip hidden" aria-live="polite"></div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
