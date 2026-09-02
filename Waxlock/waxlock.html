@@ -1,0 +1,3622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120e0a">
+<title>Waxlock</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%AF%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#120e0a;
+    --room:#1d1610;
+    --room-2:#251c14;
+    --room-3:#2c2117;
+    --flame-core:#fff6e0;
+    --flame-amber:#ffab3d;
+    --flame-ember:#ff6b35;
+    --wax-wet:#fff2d8;
+    --wax-wet-shadow:#e0b97a;
+    --wax-hard:#d6c39a;
+    --wax-hard-shadow:#8f7c56;
+    --water:#5088ae;
+    --water-deep:#2c5473;
+    --gold:#f0b93e;
+    --gold-dim:#8a6a26;
+    --danger:#e05b42;
+    --ink:#f3e9d6;
+    --ink-dim:#a59372;
+    --ink-faint:#6e6048;
+    --line:rgba(240,185,62,0.16);
+    --line-strong:rgba(240,185,62,0.32);
+    --font-display:'Fraunces',Georgia,'Times New Roman',serif;
+    --font-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --shadow-lift:0 8px 28px rgba(0,0,0,0.45);
+    --dur:1;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;overscroll-behavior:none;}
+  body{
+    background:var(--void);
+    color:var(--ink);
+    font-family:var(--font-body);
+    overflow:hidden;
+    position:fixed;
+    inset:0;
+    touch-action:none;
+    -webkit-user-select:none;user-select:none;
+  }
+  #app{
+    position:relative;
+    height:100%;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 8%, rgba(255,171,61,0.07), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 100%, rgba(80,136,174,0.05), transparent 70%),
+      var(--void);
+  }
+
+  /* ===== HUD ===== */
+  #hud{
+    width:100%;
+    max-width:640px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:max(10px, env(safe-area-inset-top)) 14px 8px;
+    gap:10px;
+    flex-shrink:0;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  #hud.visible{opacity:1;pointer-events:auto;}
+  #pauseBtn, #muteBtn{
+    width:38px;height:38px;border-radius:9px;
+    background:var(--room-2);border:1px solid var(--line);
+    color:var(--ink-dim);font-size:16px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;
+  }
+  #pauseBtn:hover, #muteBtn:hover{border-color:var(--line-strong);color:var(--ink);}
+  #muteBtn.isMuted{color:var(--danger);opacity:.75;}
+  #hudCenter{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:0;}
+  #hudTier{font-family:var(--font-display);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);opacity:.85;}
+  #hudLevelLabel{font-size:12px;color:var(--ink-dim);font-variant-numeric:tabular-nums;}
+  #hudWicks{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  #hudWickIcons{display:flex;gap:4px;}
+  .wickDot{
+    width:9px;height:9px;border-radius:50% 50% 50% 4px;
+    background:var(--ink-faint);
+    transform:rotate(-45deg);
+    transition:background .3s ease, box-shadow .3s ease;
+  }
+  .wickDot.lit{background:var(--gold);box-shadow:0 0 8px 1px rgba(240,185,62,0.7);}
+  .wickDot.gold{outline:1px solid var(--gold);outline-offset:1px;}
+
+  #buffTray{
+    display:flex;gap:6px;padding:0 14px;min-height:0;flex-shrink:0;
+    opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  #buffTray.visible{opacity:1;}
+  .buffChip{
+    display:flex;align-items:center;gap:5px;
+    background:var(--room-2);border:1px solid var(--line);
+    border-radius:999px;padding:4px 9px 4px 7px;
+    font-size:11px;color:var(--ink-dim);
+  }
+  .buffChip .buffIcon{font-size:12px;}
+  .buffChip .buffCount{color:var(--gold);font-weight:600;}
+  .buffChip.modChip{border-style:dashed;opacity:.82;}
+
+  /* ===== BOARD ===== */
+  #boardWrap{
+    flex:1;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    min-height:0;
+    padding:6px;
+  }
+  #gameCanvas{
+    display:block;
+    border-radius:14px;
+    box-shadow:var(--shadow-lift), 0 0 0 1px var(--line);
+    background:var(--room);
+    touch-action:none;
+  }
+  #introToast{
+    position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    background:rgba(18,14,10,0.88);border:1px solid var(--line-strong);
+    padding:9px 18px;border-radius:999px;
+    font-family:var(--font-display);font-size:14px;letter-spacing:.03em;
+    color:var(--gold);pointer-events:none;
+    transition:opacity .35s ease;
+    white-space:nowrap;
+  }
+  #introToast.hidden{opacity:0;}
+  #meltBanner{
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    background:rgba(18,14,10,0.92);border:1px solid var(--gold);
+    padding:8px 16px;border-radius:999px;font-size:13px;color:var(--gold);
+    animation:pulseGlow 1.4s ease-in-out infinite;
+  }
+  #meltBanner.hidden{display:none;}
+  @keyframes pulseGlow{
+    0%,100%{box-shadow:0 0 0 0 rgba(240,185,62,0.35);}
+    50%{box-shadow:0 0 0 8px rgba(240,185,62,0);}
+  }
+  #tapHint{
+    font-size:11px;color:var(--ink-faint);text-align:center;
+    padding:2px 0 max(10px, env(safe-area-inset-bottom));
+    letter-spacing:.05em;
+    flex-shrink:0;
+    opacity:0;transition:opacity .3s;
+  }
+  #tapHint.visible{opacity:1;}
+
+  /* ===== SCREENS & OVERLAYS ===== */
+  .screen{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--void);
+    padding:24px 18px;
+    overflow-y:auto;
+  }
+  .screen.hidden{display:none;}
+  .overlay{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(10,7,5,0.72);
+    padding:20px;
+    z-index:20;
+    overflow-y:auto;
+  }
+  .overlay.hidden{display:none;}
+  .panel{
+    background:var(--room);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:28px 26px;
+    max-width:420px;
+    width:100%;
+    box-shadow:var(--shadow-lift);
+    text-align:center;
+  }
+  .panel.wide{max-width:560px;}
+
+  .brandRow{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:8px;}
+  #titleFlame{width:64px;height:88px;}
+  h1.title{
+    font-family:var(--font-display);
+    font-size:52px;font-weight:600;
+    color:var(--ink);
+    margin:2px 0 0;
+    letter-spacing:.01em;
+  }
+  .tagline{color:var(--ink-dim);font-size:14px;margin:0 0 26px;letter-spacing:.02em;}
+  h2.panelTitle{
+    font-family:var(--font-display);font-size:26px;font-weight:600;
+    margin:0 0 6px;color:var(--ink);
+  }
+  .panelSub{color:var(--ink-dim);font-size:13px;margin:0 0 20px;line-height:1.5;}
+
+  .menuStack{display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px;}
+  .btn{
+    font-family:var(--font-body);
+    font-size:15px;font-weight:600;
+    padding:13px 20px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:var(--room-2);
+    color:var(--ink);
+    cursor:pointer;
+    transition:transform .12s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+    -webkit-appearance:none;
+  }
+  .btn:hover{border-color:var(--line-strong);background:var(--room-3);}
+  .btn:active{transform:scale(.97);}
+  .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+  .btn.primary{
+    background:var(--gold);
+    color:#241a08;
+    border-color:var(--gold);
+  }
+  .btn.primary:hover{background:#f5c65a;box-shadow:0 0 20px rgba(240,185,62,0.35);}
+  .btn.ghost{background:transparent;}
+  .btnSub{display:block;font-size:11px;font-weight:400;opacity:.6;margin-top:3px;letter-spacing:.01em;}
+  .btn.small{padding:9px 14px;font-size:13px;border-radius:9px;}
+  .menuGrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:280px;margin-top:4px;}
+  .settingSectionLabel{
+    font-family:var(--font-display);font-size:13px;color:var(--gold);
+    text-transform:uppercase;letter-spacing:.1em;
+    margin:22px 0 6px;text-align:left;
+  }
+  #themeGroup .segBtn[disabled]{opacity:.35;cursor:not-allowed;}
+  .achRow{
+    display:flex;align-items:center;gap:12px;padding:12px 8px;
+    border-bottom:1px solid var(--line);opacity:.45;
+  }
+  .achRow.unlocked{opacity:1;}
+  .achIcon{font-size:22px;width:30px;text-align:center;flex-shrink:0;}
+  .achName{font-family:var(--font-display);font-size:14px;color:var(--ink);}
+  .achDesc{font-size:11.5px;color:var(--ink-dim);margin-top:2px;}
+  .customRow{
+    display:flex;align-items:center;gap:6px;padding:8px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .customName{flex:1;font-size:13px;color:var(--ink);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #challengeBanner{
+    display:flex;align-items:center;gap:10px;justify-content:space-between;
+    background:var(--room-2);border:1px solid var(--line-strong);border-radius:12px;
+    padding:10px 14px;margin-bottom:16px;max-width:320px;width:100%;
+  }
+  #challengeText{font-size:12.5px;color:var(--ink-dim);text-align:left;}
+  #editorToolbar{
+    display:none;flex-direction:column;gap:10px;
+    width:100%;max-width:520px;padding:10px 14px max(10px,env(safe-area-inset-bottom));
+    flex-shrink:0;
+  }
+  #editorToolbar.visible{display:flex;}
+  .editorRow{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+  #editorNameInput{
+    flex:1;min-width:0;background:var(--room-2);border:1px solid var(--line);
+    border-radius:8px;padding:8px 10px;color:var(--ink);font-family:var(--font-body);font-size:13px;
+  }
+  #editorNameInput:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  #editorToolGroup{width:100%;flex-wrap:wrap;justify-content:center;}
+
+  body.large-targets .btn{padding:17px 22px;font-size:17px;}
+  body.large-targets .btn.small{padding:13px 18px;font-size:15px;}
+  body.large-targets .iconBtn,
+  body.large-targets #pauseBtn,
+  body.large-targets #muteBtn{width:48px;height:48px;font-size:19px;}
+  body.large-targets .levelBtn{width:66px;height:66px;font-size:20px;}
+  body.large-targets .toggle{width:52px;height:30px;}
+  body.large-targets .toggle .knob{width:24px;height:24px;}
+  body.large-targets .toggle.on .knob{transform:translateX(22px);}
+  body.large-targets .segBtn{padding:10px 15px;font-size:14px;}
+
+  #meltBanner.hidden{display:none;}
+  @keyframes pulseGlow2{
+    0%,100%{box-shadow:0 0 0 0 rgba(240,185,62,0.35);}
+    50%{box-shadow:0 0 0 8px rgba(240,185,62,0);}
+  }
+  #undoBtn{
+    position:absolute;bottom:12px;left:12px;
+    background:rgba(18,14,10,0.88);border:1px solid var(--line-strong);
+    color:var(--gold);font-size:12.5px;padding:8px 13px;border-radius:999px;
+    cursor:pointer;
+  }
+  #undoBtn:hover{border-color:var(--gold);}
+  #undoBtn.hidden{display:none;}
+  .btn.danger-ghost{color:var(--danger);}
+  .btn[disabled]{opacity:.4;cursor:not-allowed;}
+
+  .backRow{position:absolute;top:max(16px, env(safe-area-inset-top));left:16px;}
+  .iconBtn{
+    width:38px;height:38px;border-radius:9px;
+    background:var(--room-2);border:1px solid var(--line);
+    color:var(--ink-dim);font-size:17px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .iconBtn:hover{color:var(--ink);border-color:var(--line-strong);}
+
+  /* Level select */
+  #levelSelectScroll{width:100%;max-width:520px;padding-bottom:20px;}
+  .tierBlock{margin-bottom:22px;}
+  .tierHeader{
+    display:flex;align-items:baseline;gap:8px;margin-bottom:10px;
+    padding-left:2px;
+  }
+  .tierHeader .tierName{font-family:var(--font-display);font-size:17px;color:var(--gold);}
+  .tierHeader .tierDesc{font-size:11px;color:var(--ink-faint);}
+  .levelRow{display:grid;grid-template-columns:repeat(auto-fill, 58px);gap:9px;justify-content:start;}
+  .levelBtn{
+    width:58px;height:58px;border-radius:12px;
+    background:var(--room-2);border:1px solid var(--line);
+    color:var(--ink);font-size:18px;font-weight:600;font-family:var(--font-display);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;position:relative;
+    transition:transform .12s ease, border-color .15s;
+  }
+  .levelBtn:hover{border-color:var(--line-strong);}
+  .levelBtn:active{transform:scale(.94);}
+  .levelBtn.locked{color:var(--ink-faint);cursor:default;background:var(--room);}
+  .levelBtn.locked:hover{border-color:var(--line);}
+  .levelBtn.done{border-color:var(--gold);}
+  .levelBtn.done::after{
+    content:'';position:absolute;top:4px;right:4px;width:7px;height:7px;
+    border-radius:50%;background:var(--gold);box-shadow:0 0 5px rgba(240,185,62,0.8);
+  }
+  .levelBtn.gold{box-shadow:inset 0 0 0 1px rgba(240,185,62,0.4);}
+  .lockIcon{font-size:15px;opacity:.6;}
+
+  /* Settings */
+  .settingRow{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:13px 4px;border-bottom:1px solid var(--line);
+    width:100%;max-width:320px;
+  }
+  .settingRow:last-of-type{border-bottom:none;}
+  .settingLabel{font-size:14px;color:var(--ink);text-align:left;}
+  .settingSub{font-size:11px;color:var(--ink-faint);margin-top:2px;}
+  .toggle{
+    width:44px;height:26px;border-radius:999px;background:var(--room-3);
+    border:1px solid var(--line);position:relative;cursor:pointer;flex-shrink:0;
+  }
+  .toggle .knob{
+    position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
+    background:var(--ink-dim);transition:transform .18s ease, background .18s ease;
+  }
+  .toggle.on{background:rgba(240,185,62,0.25);border-color:var(--gold-dim);}
+  .toggle.on .knob{transform:translateX(18px);background:var(--gold);}
+  .segGroup{display:flex;gap:6px;background:var(--room-2);padding:4px;border-radius:10px;}
+  .segBtn{
+    padding:7px 12px;border-radius:7px;font-size:12px;color:var(--ink-dim);
+    background:transparent;border:none;cursor:pointer;font-family:var(--font-body);
+  }
+  .segBtn.active{background:var(--gold);color:#241a08;font-weight:600;}
+
+  .howToList{text-align:left;max-width:340px;margin:0 0 22px;padding:0;list-style:none;}
+  .howToList li{
+    display:flex;gap:11px;margin-bottom:14px;font-size:13.5px;line-height:1.5;color:var(--ink-dim);
+  }
+  .howToList .howIcon{font-size:18px;flex-shrink:0;width:22px;text-align:center;}
+  .howToList b{color:var(--ink);font-weight:600;}
+
+  /* Relief modal */
+  .reliefGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 4px;width:100%;}
+  @media (max-width:420px){.reliefGrid{grid-template-columns:1fr;}}
+  .reliefCard{
+    background:var(--room-2);border:1px solid var(--line);border-radius:13px;
+    padding:16px 12px;cursor:pointer;text-align:center;
+    transition:transform .12s ease, border-color .15s ease, background .15s ease;
+  }
+  .reliefCard:hover{border-color:var(--gold);background:var(--room-3);transform:translateY(-2px);}
+  .reliefCard:active{transform:scale(.96);}
+  .reliefCard .reliefIcon{font-size:26px;margin-bottom:8px;display:block;}
+  .reliefCard .reliefName{font-family:var(--font-display);font-size:15px;color:var(--gold);margin-bottom:4px;}
+  .reliefCard .reliefDesc{font-size:11.5px;color:var(--ink-dim);line-height:1.4;}
+
+  .statRow{display:flex;justify-content:center;gap:28px;margin:16px 0 22px;}
+  .statItem{text-align:center;}
+  .statVal{font-family:var(--font-display);font-size:26px;color:var(--gold);font-variant-numeric:tabular-nums;}
+  .statLabel{font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+  .bestBadge{
+    display:inline-block;margin-top:8px;font-size:11px;color:var(--gold);
+    background:rgba(240,185,62,0.12);border:1px solid var(--line-strong);
+    padding:3px 10px;border-radius:999px;
+  }
+
+  #deathReasonText{font-size:14px;color:var(--ink-dim);margin:0 0 22px;line-height:1.5;}
+
+  .hidden{display:none !important;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--room-3);border-radius:4px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001s !important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="hud">
+    <button id="pauseBtn" aria-label="Pause">II</button>
+    <div id="hudCenter">
+      <div id="hudTier">Kindling</div>
+      <div id="hudLevelLabel">Level 1</div>
+    </div>
+    <div id="hudWicks">
+      <div id="hudWickIcons"></div>
+    </div>
+    <button id="muteBtn" aria-label="Mute">&#128266;</button>
+  </div>
+
+  <div id="buffTray"></div>
+
+  <div id="boardWrap">
+    <canvas id="gameCanvas"></canvas>
+    <div id="introToast" class="hidden"></div>
+    <div id="meltBanner" class="hidden">Tap a hardened wall to melt it</div>
+    <button id="undoBtn" class="hidden" aria-label="Undo last turn">&#8634; Undo</button>
+  </div>
+  <div id="tapHint">tap, arrow keys, or WASD to move</div>
+
+  <div id="editorToolbar">
+    <div class="editorRow">
+      <input type="text" id="editorNameInput" placeholder="Level name" maxlength="24">
+      <span id="editorSizeLabel" class="settingSub">9&times;9</span>
+    </div>
+    <div class="segGroup" id="editorToolGroup">
+      <button class="segBtn active" data-tool="wall">Wall</button>
+      <button class="segBtn" data-tool="water">Water</button>
+      <button class="segBtn" data-tool="wick">Wick</button>
+      <button class="segBtn" data-tool="goldWick">Gold</button>
+      <button class="segBtn" data-tool="start">Start</button>
+      <button class="segBtn" data-tool="erase">Erase</button>
+    </div>
+    <div class="editorRow">
+      <button class="btn small ghost" id="btnEditorSizeDown">&minus; Size</button>
+      <button class="btn small ghost" id="btnEditorSizeUp">+ Size</button>
+      <button class="btn small ghost" id="btnEditorNew">New</button>
+    </div>
+    <div class="editorRow">
+      <button class="btn small primary" id="btnEditorPlaytest">Playtest</button>
+      <button class="btn small" id="btnEditorSave">Save</button>
+      <button class="btn small ghost" id="btnEditorExit">Exit</button>
+    </div>
+    <div id="editorLoadList" style="max-height:120px;overflow-y:auto;width:100%;"></div>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div id="screenMenu" class="screen">
+    <div id="challengeBanner" class="hidden">
+      <span id="challengeText"></span>
+      <button class="btn small primary" id="btnAcceptChallenge">Accept</button>
+      <button class="iconBtn" id="btnDismissChallenge" style="width:28px;height:28px;font-size:13px;flex-shrink:0;">&times;</button>
+    </div>
+    <div class="brandRow">
+      <canvas id="titleFlame" width="64" height="88"></canvas>
+      <h1 class="title">Waxlock</h1>
+    </div>
+    <p class="tagline">Trace your path. Mind your wax.</p>
+    <div class="menuStack">
+      <button class="btn primary" id="btnPlay">Play</button>
+      <button class="btn" id="btnLevelSelect">Level Select</button>
+      <button class="btn" id="btnEndless">Endless Soot Mode<span id="endlessBestSub" class="btnSub"></span></button>
+      <button class="btn" id="btnDaily">Daily Challenge<span id="dailyBestSub" class="btnSub"></span></button>
+      <button class="btn" id="btnTimeAttack">Time Attack<span id="taBestSub" class="btnSub"></span></button>
+    </div>
+    <div class="menuGrid2">
+      <button class="btn ghost" id="btnEditor">Level Editor</button>
+      <button class="btn ghost" id="btnAchievements">Achievements</button>
+      <button class="btn ghost" id="btnHowTo">How to Play</button>
+      <button class="btn ghost" id="btnSettings">Settings</button>
+    </div>
+  </div>
+
+  <!-- LEVEL SELECT -->
+  <div id="screenLevelSelect" class="screen hidden">
+    <div class="backRow"><button class="iconBtn" id="btnBackFromLevelSelect">&#8592;</button></div>
+    <h2 class="panelTitle">Level Select</h2>
+    <p class="panelSub">Clear a level to light the next one.</p>
+    <div id="levelSelectScroll"></div>
+  </div>
+
+  <!-- HOW TO PLAY -->
+  <div id="screenHowTo" class="screen hidden">
+    <div class="backRow"><button class="iconBtn" id="btnBackFromHowTo">&#8592;</button></div>
+    <h2 class="panelTitle">How to Play</h2>
+    <ul class="howToList">
+      <li><span class="howIcon">&#127918;</span><span><b>Arrow keys or WASD</b> steer you directly. Tap or click also turns you 90&deg;. You're always moving forward.</span></li>
+      <li><span class="howIcon">&#128367;</span><span><b>Every four tiles, you drip wax</b> on the tile behind you. It hardens into a wall after two seconds.</span></li>
+      <li><span class="howIcon">&#128367;</span><span><b>Light every wick</b> to clear the level. Avoid water, hardened wax, and the grid's edge.</span></li>
+      <li><span class="howIcon">&#128168;</span><span><b>Wind gusts</b> nudge you one tile sideways. Watch for the shimmering arrow &mdash; it warns you a second early.</span></li>
+      <li><span class="howIcon">&#128293;</span><span><b>Embers</b> flare up on random tiles in later levels. A warm glow warns you just before they catch.</span></li>
+      <li><span class="howIcon">&#10024;</span><span><b>Gold wicks</b> offer a bonus: melt a wall, slow your wax, dodge a gust, or leave a drip that never hardens.</span></li>
+    </ul>
+    <button class="btn primary" id="btnHowToDone" style="max-width:280px;width:100%;">Got it</button>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="screenSettings" class="screen hidden">
+    <div class="backRow"><button class="iconBtn" id="btnBackFromSettings">&#8592;</button></div>
+    <h2 class="panelTitle">Settings</h2>
+    <div style="width:100%;max-width:340px;padding-bottom:24px;">
+      <div class="settingRow">
+        <div class="settingLabel">Music</div>
+        <div class="toggle" id="toggleMusic"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow">
+        <div class="settingLabel">Sound Effects</div>
+        <div class="toggle" id="toggleSfx"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow">
+        <div>
+          <div class="settingLabel">Reduced Motion</div>
+          <div class="settingSub">Calmer flicker &amp; effects</div>
+        </div>
+        <div class="toggle" id="toggleReducedMotion"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow">
+        <div>
+          <div class="settingLabel">Colorblind-Safe Palette</div>
+          <div class="settingSub">Higher-contrast hazard colors</div>
+        </div>
+        <div class="toggle" id="toggleColorblind"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow">
+        <div>
+          <div class="settingLabel">Large Tap Targets</div>
+          <div class="settingSub">Bigger buttons for mobile</div>
+        </div>
+        <div class="toggle" id="toggleLargeTargets"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow" style="flex-direction:column;align-items:flex-start;gap:10px;">
+        <div class="settingLabel">Flame Speed</div>
+        <div class="segGroup" id="speedGroup">
+          <button class="segBtn" data-speed="relaxed">Relaxed</button>
+          <button class="segBtn" data-speed="normal">Normal</button>
+          <button class="segBtn" data-speed="brisk">Brisk</button>
+        </div>
+      </div>
+
+      <div class="settingSectionLabel">Flame Color</div>
+      <div class="segGroup" id="themeGroup" style="flex-wrap:wrap;width:100%;justify-content:flex-start;"></div>
+
+      <div class="settingSectionLabel">Modifiers</div>
+      <p class="panelSub" style="margin:0 0 8px;text-align:left;">Applied to the next level you start.</p>
+      <div class="settingRow">
+        <div>
+          <div class="settingLabel">Fading Wicks</div>
+          <div class="settingSub">Lit wicks dim if left too long</div>
+        </div>
+        <div class="toggle" id="toggleFadingWicks"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow">
+        <div>
+          <div class="settingLabel">Ordered Wicks</div>
+          <div class="settingSub">Light wicks in numbered sequence</div>
+        </div>
+        <div class="toggle" id="toggleOrderedWicks"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow">
+        <div>
+          <div class="settingLabel">Zen Mode</div>
+          <div class="settingSub">Hazards can't end your run</div>
+        </div>
+        <div class="toggle" id="toggleZen"><div class="knob"></div></div>
+      </div>
+      <div class="settingRow">
+        <div>
+          <div class="settingLabel">Undo Assist</div>
+          <div class="settingSub">One turn-back per level</div>
+        </div>
+        <div class="toggle" id="toggleUndoAssist"><div class="knob"></div></div>
+      </div>
+
+      <div class="settingSectionLabel">Data</div>
+      <button class="btn ghost danger-ghost" id="btnResetProgress" style="width:100%;">Reset All Progress</button>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div id="screenAchievements" class="screen hidden">
+    <div class="backRow"><button class="iconBtn" id="btnBackFromAchievements">&#8592;</button></div>
+    <h2 class="panelTitle">Achievements</h2>
+    <p class="panelSub" id="achProgress">0 / 12 unlocked</p>
+    <div id="achievementsScroll" style="width:100%;max-width:400px;padding-bottom:20px;"></div>
+  </div>
+
+  <!-- PAUSE OVERLAY -->
+  <div id="overlayPause" class="overlay hidden">
+    <div class="panel">
+      <h2 class="panelTitle">Paused</h2>
+      <div class="menuStack" style="margin:18px auto 0;">
+        <button class="btn primary" id="btnResume">Resume</button>
+        <button class="btn" id="btnRestartLevel">Restart Level</button>
+        <button class="btn" id="btnPauseLevelSelect">Level Select</button>
+        <button class="btn ghost" id="btnPauseHowTo">How to Play</button>
+        <button class="btn ghost" id="btnPauseSettings">Settings</button>
+        <button class="btn ghost" id="btnQuitToMenu">Quit to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELIEF CHOICE OVERLAY -->
+  <div id="overlayRelief" class="overlay hidden">
+    <div class="panel wide">
+      <h2 class="panelTitle">A wick catches gold</h2>
+      <p class="panelSub">Choose one.</p>
+      <div class="reliefGrid" id="reliefOptions"></div>
+    </div>
+  </div>
+
+  <!-- LEVEL COMPLETE OVERLAY -->
+  <div id="overlayLevelComplete" class="overlay hidden">
+    <div class="panel">
+      <h2 class="panelTitle">Every wick lit</h2>
+      <div class="statRow" id="completeStats"></div>
+      <div id="completeBadges" style="margin:-10px 0 16px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;"></div>
+      <div class="menuStack" style="margin:0 auto;">
+        <div class="editorRow" style="gap:10px;">
+          <button class="btn ghost small" id="btnSaveScreenshot" style="flex:1;">Save Your Maze</button>
+          <button class="btn ghost small" id="btnChallengeFriend" style="flex:1;">Challenge a Friend</button>
+        </div>
+        <button class="btn primary" id="btnNextLevel">Next Level</button>
+        <button class="btn" id="btnCompleteRetry">Retry</button>
+        <button class="btn ghost" id="btnCompleteLevelSelect">Level Select</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIME ATTACK COMPLETE -->
+  <div id="overlayTimeAttackComplete" class="overlay hidden">
+    <div class="panel">
+      <h2 class="panelTitle">Time Attack Complete</h2>
+      <div class="statRow" id="taStats"></div>
+      <div id="taBadges" style="margin:-10px 0 16px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;"></div>
+      <div class="menuStack" style="margin:0 auto;">
+        <button class="btn primary" id="btnTaPlayAgain">Play Again</button>
+        <button class="btn ghost" id="btnTaMenu">Quit to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAILY COMPLETE -->
+  <div id="overlayDailyComplete" class="overlay hidden">
+    <div class="panel">
+      <h2 class="panelTitle">Today's Challenge Cleared</h2>
+      <div class="statRow" id="dailyStats"></div>
+      <div id="dailyBadges" style="margin:-10px 0 16px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;"></div>
+      <div class="menuStack" style="margin:0 auto;">
+        <button class="btn primary" id="btnDailyMenu">Back to Menu</button>
+        <button class="btn ghost" id="btnDailyRetry">Retry for a Better Time</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- GAME OVER OVERLAY -->
+  <div id="overlayGameOver" class="overlay hidden">
+    <div class="panel">
+      <h2 class="panelTitle" id="gameOverTitle">Snuffed out</h2>
+      <p id="deathReasonText"></p>
+      <div class="statRow hidden" id="endlessStats"></div>
+      <div class="menuStack" style="margin:0 auto;">
+        <button class="btn primary" id="btnRetry">Retry</button>
+        <button class="btn" id="btnGameOverLevelSelect">Level Select</button>
+        <button class="btn ghost" id="btnGameOverMenu">Quit to Menu</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+'use strict';
+
+// ===================================================================
+// ===== CONFIG & CONSTANTS =====
+// ===================================================================
+var STORAGE_KEY = 'waxlock_save_v1';
+
+var DIR_VECS = [ {x:0,y:-1}, {x:1,y:0}, {x:0,y:1}, {x:-1,y:0} ]; // Up, Right, Down, Left
+var DIR_NAMES = ['up','right','down','left'];
+
+var DRIP_EVERY = 4;           // tiles moved between wax drips
+var WAX_HARDEN_MS = 2000;     // base time for wet wax to harden
+var WIND_TELEGRAPH_MS = 1000; // lead time before a gust fires
+var DOUBLE_GUST_GAP_MS = 1400;// gap between first and second gust in a double
+var SLOW_SET_DURATION_MS = 10000;
+var FOG_SOFT_BAND = 1.5;      // extra tiles over which fog fades out
+
+var SPEED_PRESETS = { relaxed: 300, normal: 220, brisk: 160 };
+
+var TIER_INFO = {
+  Kindling:  { desc: 'learn the drip',        toast: 'Kindling \u2014 learn the drip.' },
+  Draft:     { desc: 'the air stirs',         toast: 'Draft \u2014 the air stirs.' },
+  Dripwork:  { desc: 'old wax lingers',       toast: 'Dripwork \u2014 old wax lingers.' },
+  Crosswind: { desc: 'winds cross and confuse', toast: 'Crosswind \u2014 winds cross and confuse.' },
+  Blackout:  { desc: 'trust what you remember', toast: 'Blackout \u2014 trust what you remember.' }
+};
+var TIER_ORDER = ['Kindling','Draft','Dripwork','Crosswind','Blackout'];
+
+// 20 hand-tuned levels. Tile placement itself is generated (seeded per level
+// number, so a given level is identical every time you play it) but every
+// parameter below - size, hazard density, wind, fog - was chosen by hand to
+// follow the tier table in the design doc.
+var LEVELS = [
+  {n:1,  tier:'Kindling',  size:7,  wicks:1, gold:false, wind:null, prewax:0,  water:0,  fog:null, embers:null},
+  {n:2,  tier:'Kindling',  size:7,  wicks:2, gold:false, wind:null, prewax:0,  water:3,  fog:null, embers:null},
+  {n:3,  tier:'Kindling',  size:8,  wicks:2, gold:true,  wind:null, prewax:0,  water:5,  fog:null, embers:null},
+
+  {n:4,  tier:'Draft',     size:8,  wicks:2, gold:false, wind:{interval:8,   double:false}, prewax:0,  water:5,  fog:null, embers:null},
+  {n:5,  tier:'Draft',     size:9,  wicks:3, gold:false, wind:{interval:8,   double:false}, prewax:0,  water:6,  fog:null, embers:null},
+  {n:6,  tier:'Draft',     size:9,  wicks:3, gold:false, wind:{interval:7.5, double:false}, prewax:0,  water:7,  fog:null, embers:null},
+  {n:7,  tier:'Draft',     size:9,  wicks:3, gold:true,  wind:{interval:7,   double:false}, prewax:0,  water:8,  fog:null, embers:null},
+
+  {n:8,  tier:'Dripwork',  size:10, wicks:3, gold:false, wind:{interval:7,   double:false}, prewax:5,  water:8,  fog:null, embers:null},
+  {n:9,  tier:'Dripwork',  size:10, wicks:4, gold:false, wind:{interval:6.5, double:false}, prewax:7,  water:9,  fog:null, embers:null},
+  {n:10, tier:'Dripwork',  size:10, wicks:4, gold:true,  wind:{interval:6.5, double:false}, prewax:9,  water:9,  fog:null, embers:null},
+  {n:11, tier:'Dripwork',  size:11, wicks:4, gold:false, wind:{interval:6,   double:false}, prewax:11, water:10, fog:null, embers:null},
+
+  {n:12, tier:'Crosswind', size:11, wicks:4, gold:false, wind:{interval:6,   double:true, doubleChance:0.4}, prewax:10, water:10, fog:null, embers:{interval:9,   warnMs:900, hazardMs:2200}},
+  {n:13, tier:'Crosswind', size:11, wicks:4, gold:true,  wind:{interval:5.5, double:true, doubleChance:0.5}, prewax:11, water:11, fog:null, embers:{interval:8.5, warnMs:900, hazardMs:2200}},
+  {n:14, tier:'Crosswind', size:12, wicks:5, gold:false, wind:{interval:5.5, double:true, doubleChance:0.6}, prewax:12, water:11, fog:null, embers:{interval:8,   warnMs:850, hazardMs:2200}},
+  {n:15, tier:'Crosswind', size:12, wicks:5, gold:false, wind:{interval:5,   double:true, doubleChance:0.7}, prewax:13, water:12, fog:null, embers:{interval:7.5, warnMs:850, hazardMs:2100}},
+
+  {n:16, tier:'Blackout',  size:12, wicks:4, gold:false, wind:{interval:6,   double:true, doubleChance:0.3}, prewax:9,  water:10, fog:3,   embers:{interval:7.5, warnMs:900, hazardMs:2100, patrol:true, stepMs:700}},
+  {n:17, tier:'Blackout',  size:12, wicks:5, gold:true,  wind:{interval:5.5, double:true, doubleChance:0.4}, prewax:11, water:11, fog:3,   embers:{interval:7,   warnMs:850, hazardMs:2100, patrol:true, stepMs:660}},
+  {n:18, tier:'Blackout',  size:13, wicks:5, gold:false, wind:{interval:5.5, double:true, doubleChance:0.5}, prewax:12, water:12, fog:3,   embers:{interval:6.5, warnMs:850, hazardMs:2000, patrol:true, stepMs:620}},
+  {n:19, tier:'Blackout',  size:13, wicks:5, gold:false, wind:{interval:5,   double:true, doubleChance:0.6}, prewax:13, water:12, fog:2.5, embers:{interval:6,   warnMs:800, hazardMs:2000, patrol:true, stepMs:580}},
+  {n:20, tier:'Blackout',  size:14, wicks:6, gold:true,  wind:{interval:5,   double:true, doubleChance:0.7}, prewax:14, water:13, fog:2.5, embers:{interval:5.5, warnMs:800, hazardMs:2000, patrol:true, stepMs:550}}
+];
+
+function getLevelConfig(n){ return LEVELS[n-1]; }
+
+function getEndlessConfig(depth){
+  var size = Math.min(17, 8 + Math.floor(depth/2));
+  var wicks = Math.min(9, 2 + Math.floor(depth/3));
+  var windInterval = Math.max(3.4, 8 - depth*0.16);
+  var doubleChance = Math.min(0.85, Math.max(0, (depth-8)*0.05));
+  var prewax = Math.min(Math.floor(size*size*0.22), Math.max(0, Math.floor((depth-1)*0.9)));
+  var water = Math.min(Math.floor(size*size*0.16), Math.floor(4 + depth*0.55));
+  var fog = depth >= 13 ? Math.max(2, 3.5 - Math.floor((depth-13)/9)*0.5) : null;
+  var embers = depth >= 12 ? { interval: Math.max(4.5, 9 - (depth-12)*0.22), warnMs: Math.max(700,900-(depth-12)*10), hazardMs: Math.max(1700,2200-(depth-12)*15), patrol: depth>=16, stepMs: Math.max(400, 700-(depth-16)*10) } : null;
+  var gold = depth % 4 === 0;
+  var tier = depth < 4 ? 'Kindling' : depth < 8 ? 'Draft' : depth < 12 ? 'Dripwork' : depth < 16 ? 'Crosswind' : 'Blackout';
+  return {
+    n: depth, tier: tier, size: size, wicks: wicks, gold: gold,
+    wind: { interval: windInterval, double: doubleChance > 0, doubleChance: doubleChance },
+    prewax: prewax, water: water, fog: fog, embers: embers, endless:true
+  };
+}
+
+// ===================================================================
+// ===== SEEDED RNG =====
+// ===================================================================
+function mulberry32(seed){
+  var s = seed >>> 0;
+  return function(){
+    s = (s + 0x6D2B79F5) | 0;
+    var t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleArr(arr, rng){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(rng() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+// ===================================================================
+// ===== TILE HELPERS =====
+// ===================================================================
+function emptyTile(){ return { type:'empty', isGold:false, lit:false, hardenAt:null, wetSince:null, permanentlyWet:false, litAt:null, order:-1 }; }
+
+function createEmptyGrid(size){
+  var g = [];
+  for (var y=0;y<size;y++){
+    var row = [];
+    for (var x=0;x<size;x++) row.push(emptyTile());
+    g.push(row);
+  }
+  return g;
+}
+
+function inBounds(x,y,size){ return x>=0 && y>=0 && x<size && y<size; }
+
+function gridHasType(grid, size, type){
+  for (var y=0;y<size;y++) for (var x=0;x<size;x++) if (grid[y][x].type===type) return true;
+  return false;
+}
+
+function getAllWicks(grid, size){
+  var out = [];
+  for (var y=0;y<size;y++) for (var x=0;x<size;x++) if (grid[y][x].type==='wick') out.push({x:x,y:y});
+  return out;
+}
+
+// ===================================================================
+// ===== LOGIC: LEVEL GENERATION (pure - no DOM/canvas/audio) =====
+// ===================================================================
+var CARDINAL = [[0,-1],[1,0],[0,1],[-1,0]];
+
+function placeWaterBlobs(grid, size, count, rng, startPos){
+  var placed = 0, guard = 0;
+  while (placed < count && guard < count*25 + 40){
+    guard++;
+    var sx = Math.floor(rng()*size), sy = Math.floor(rng()*size);
+    if (grid[sy][sx].type !== 'empty') continue;
+    if (Math.abs(sx-startPos.x)+Math.abs(sy-startPos.y) < 3) continue;
+    var bx=sx, by=sy;
+    var blobSize = 1 + Math.floor(rng()*3);
+    for (var i=0;i<blobSize && placed<count;i++){
+      var t = grid[by][bx];
+      if (t.type==='empty' && (Math.abs(bx-startPos.x)+Math.abs(by-startPos.y))>=3){
+        t.type='water'; placed++;
+      }
+      var d = CARDINAL[Math.floor(rng()*4)];
+      var nx=bx+d[0], ny=by+d[1];
+      if (inBounds(nx,ny,size)){ bx=nx; by=ny; }
+    }
+  }
+}
+
+function placeWaxRuins(grid, size, count, rng, startPos){
+  var placed = 0, guard = 0;
+  while (placed < count && guard < count*25 + 40){
+    guard++;
+    var sx = Math.floor(rng()*size), sy = Math.floor(rng()*size);
+    if (grid[sy][sx].type !== 'empty') continue;
+    if (Math.abs(sx-startPos.x)+Math.abs(sy-startPos.y) < 3) continue;
+    var bx=sx, by=sy;
+    var dir = CARDINAL[Math.floor(rng()*4)];
+    var lineLen = 2 + Math.floor(rng()*4);
+    for (var i=0;i<lineLen && placed<count;i++){
+      var t = grid[by][bx];
+      if (t.type==='empty' && (Math.abs(bx-startPos.x)+Math.abs(by-startPos.y))>=3){
+        t.type='waxHard'; placed++;
+      }
+      if (rng() < 0.25) dir = CARDINAL[Math.floor(rng()*4)];
+      var nx=bx+dir[0], ny=by+dir[1];
+      if (inBounds(nx,ny,size)){ bx=nx; by=ny; } else { dir = CARDINAL[Math.floor(rng()*4)]; }
+    }
+  }
+}
+
+function placeWicks(grid, size, count, rng, startPos, tier){
+  var candidates = [];
+  for (var y=0;y<size;y++) for (var x=0;x<size;x++){
+    if (grid[y][x].type !== 'empty') continue;
+    if (Math.abs(x-startPos.x)+Math.abs(y-startPos.y) < 2) continue;
+    candidates.push({x:x,y:y});
+  }
+  var useBias = (tier==='Draft' || tier==='Dripwork' || tier==='Crosswind' || tier==='Blackout');
+  function cornerDist(x,y){
+    var corners = [[0,0],[size-1,0],[0,size-1],[size-1,size-1]];
+    var best = Infinity;
+    for (var i=0;i<4;i++){
+      var d = Math.abs(x-corners[i][0])+Math.abs(y-corners[i][1]);
+      if (d<best) best=d;
+    }
+    return best;
+  }
+  var pool;
+  if (useBias){
+    candidates.sort(function(a,b){ return cornerDist(a.x,a.y)-cornerDist(b.x,b.y); });
+    var cut = Math.max(count*3, Math.floor(candidates.length*0.4));
+    pool = shuffleArr(candidates.slice(0, cut), rng);
+  } else {
+    pool = shuffleArr(candidates, rng);
+  }
+
+  var chosen = [];
+  var minSpacing = Math.max(2, Math.floor(size/4));
+  for (var i=0;i<pool.length && chosen.length<count;i++){
+    var c = pool[i];
+    var ok = true;
+    for (var j=0;j<chosen.length;j++){
+      if (Math.abs(chosen[j].x-c.x)+Math.abs(chosen[j].y-c.y) < minSpacing){ ok=false; break; }
+    }
+    if (ok) chosen.push(c);
+  }
+  if (chosen.length < count){
+    for (var k=0;k<pool.length && chosen.length<count;k++){
+      var c2 = pool[k];
+      var dup = false;
+      for (var m=0;m<chosen.length;m++) if (chosen[m].x===c2.x && chosen[m].y===c2.y){ dup=true; break; }
+      if (!dup) chosen.push(c2);
+    }
+  }
+  for (var q=0;q<chosen.length;q++){
+    grid[chosen[q].y][chosen[q].x].type = 'wick';
+  }
+  return chosen;
+}
+
+function isFullyConnected(grid, size, startPos, wicks){
+  var visited = [];
+  for (var y=0;y<size;y++){ visited.push(new Array(size).fill(false)); }
+  var queue = [[startPos.x, startPos.y]];
+  visited[startPos.y][startPos.x] = true;
+  while (queue.length){
+    var cur = queue.shift();
+    var cx=cur[0], cy=cur[1];
+    for (var i=0;i<4;i++){
+      var nx=cx+CARDINAL[i][0], ny=cy+CARDINAL[i][1];
+      if (!inBounds(nx,ny,size) || visited[ny][nx]) continue;
+      var t = grid[ny][nx];
+      if (t.type==='water' || t.type==='waxHard') continue;
+      visited[ny][nx] = true;
+      queue.push([nx,ny]);
+    }
+  }
+  for (var w=0; w<wicks.length; w++){
+    if (!visited[wicks[w].y][wicks[w].x]) return false;
+  }
+  return true;
+}
+
+// Generates a level's tile grid deterministically from a numeric seed.
+// Retries with fresh sub-seeds if the layout traps a wick; falls back to
+// an obstacle-free layout as a last resort so a level can never be
+// unwinnable at load time.
+function generateLevel(config, seed){
+  var size = config.size;
+  var startPos = { x: Math.floor(size/2), y: Math.floor(size/2) };
+  var attempt = 0;
+  var maxAttempts = 30;
+  var grid, wicks;
+
+  while (attempt < maxAttempts){
+    var rng = mulberry32((seed + attempt*7919) >>> 0);
+    grid = createEmptyGrid(size);
+    placeWaterBlobs(grid, size, config.water, rng, startPos);
+    if (config.prewax > 0) placeWaxRuins(grid, size, config.prewax, rng, startPos);
+    wicks = placeWicks(grid, size, config.wicks, rng, startPos, config.tier);
+
+    if (wicks.length === config.wicks && isFullyConnected(grid, size, startPos, wicks)){
+      if (config.gold && wicks.length){
+        var best = wicks[0], bestDist = -1;
+        for (var i=0;i<wicks.length;i++){
+          var d = Math.abs(wicks[i].x-startPos.x)+Math.abs(wicks[i].y-startPos.y);
+          if (d>bestDist){ bestDist=d; best=wicks[i]; }
+        }
+        grid[best.y][best.x].isGold = true;
+      }
+      return { grid:grid, startPos:startPos, startHeading:0, wickCount:wicks.length };
+    }
+    attempt++;
+  }
+
+  // Fallback: guaranteed-clear layout, wicks only, no hazards.
+  var fallbackRng = mulberry32(seed >>> 0);
+  grid = createEmptyGrid(size);
+  wicks = placeWicks(grid, size, config.wicks, fallbackRng, startPos, config.tier);
+  if (config.gold && wicks.length) grid[wicks[wicks.length-1].y][wicks[wicks.length-1].x].isGold = true;
+  return { grid:grid, startPos:startPos, startHeading:0, wickCount:wicks.length };
+}
+
+// ===================================================================
+// ===== LOGIC: GAMEPLAY (pure - operates on plain state/grid objects) =====
+// ===================================================================
+
+// Lights a wick tile, respecting the ordered-wicks modifier: if that
+// modifier is active, only the wick matching state.nextWickOrder actually
+// lights - touching any other unlit wick out of turn is harmless (it just
+// doesn't light yet). Also stamps litAt for the fading-wicks modifier.
+function tryLightWick(state, tile, x, y, events){
+  if (tile.type==='wick' && !tile.lit){
+    if (!state.orderedMode || tile.order === state.nextWickOrder){
+      tile.lit = true;
+      tile.litAt = state.gameClock;
+      events.push({ type:'wickLit', gold:tile.isGold, x:x, y:y });
+      if (state.orderedMode) state.nextWickOrder++;
+    }
+  }
+}
+
+// Advances the flame one tile in its current heading. Mutates state+grid.
+// Returns {result:'ok'|'death', reason, events:[...]}
+function attemptMove(state, grid, size){
+  var dv = DIR_VECS[state.player.heading];
+  var nx = state.player.x + dv.x, ny = state.player.y + dv.y;
+  if (!inBounds(nx,ny,size)) return { result:'death', reason:'boundary', events:[] };
+
+  var tile = grid[ny][nx];
+  if (tile.type==='water')   return { result:'death', reason:'water', events:[] };
+  if (tile.type==='waxHard') return { result:'death', reason:'wax',   events:[] };
+  if (tile.type==='ember')   return { result:'death', reason:'ember', events:[] };
+
+  var events = [];
+  tryLightWick(state, tile, nx, ny, events);
+
+  var prevX = state.player.x, prevY = state.player.y;
+  state.player.stepCount++;
+  if (state.player.stepCount % DRIP_EVERY === 0){
+    var prevTile = grid[prevY][prevX];
+    if (prevTile.type === 'empty'){
+      prevTile.type = 'waxWet';
+      prevTile.wetSince = state.gameClock;
+      if (state.buffs.splinterCharges > 0){
+        prevTile.permanentlyWet = true;
+        state.buffs.splinterCharges--;
+      } else {
+        var slowed = state.gameClock < state.buffs.slowSetUntil;
+        prevTile.hardenAt = state.gameClock + (slowed ? WAX_HARDEN_MS*2 : WAX_HARDEN_MS);
+      }
+      state.waxPlacedCount++;
+      events.push({ type:'waxDripped', x:prevX, y:prevY });
+    }
+  }
+
+  state.player.x = nx; state.player.y = ny;
+  return { result:'ok', reason:null, events:events };
+}
+
+// Pushes the flame one tile in `direction` (0-3), independent of heading.
+// Does not affect the drip step counter.
+function resolveGust(state, grid, size, direction){
+  if (state.buffs.smokeScreenCharges > 0){
+    state.buffs.smokeScreenCharges--;
+    return { result:'blocked', reason:null, events:[] };
+  }
+  var dv = DIR_VECS[direction];
+  var nx = state.player.x + dv.x, ny = state.player.y + dv.y;
+  if (!inBounds(nx,ny,size)) return { result:'death', reason:'boundary', events:[] };
+  var tile = grid[ny][nx];
+  if (tile.type==='water')   return { result:'death', reason:'water', events:[] };
+  if (tile.type==='waxHard') return { result:'death', reason:'wax',   events:[] };
+  if (tile.type==='ember')   return { result:'death', reason:'ember', events:[] };
+
+  var events = [];
+  tryLightWick(state, tile, nx, ny, events);
+  state.player.x = nx; state.player.y = ny;
+  return { result:'ok', reason:null, events:events };
+}
+
+function randomDirection(rng){ return Math.floor(rng()*4); }
+
+// Advances the wind scheduler. Call every sim frame. Returns a list of
+// events (telegraph shown / gust resolved) for the caller to react to
+// with sound/vfx. Mutates state.wind and, via resolveGust, the player.
+function updateWind(state, grid, size, rng){
+  var w = state.level.wind;
+  if (!w) return [];
+  var events = [];
+  if (state.wind.nextGustAt === null){
+    state.wind.nextGustAt = state.gameClock + w.interval*1000;
+  }
+  if (!state.wind.telegraphShown && state.gameClock >= state.wind.nextGustAt - WIND_TELEGRAPH_MS){
+    state.wind.telegraphShown = true;
+    state.wind.direction = randomDirection(rng);
+    events.push({ type:'telegraph', direction: state.wind.direction });
+  }
+  if (state.gameClock >= state.wind.nextGustAt){
+    var res = resolveGust(state, grid, size, state.wind.direction);
+    events.push({ type:'gust', result:res });
+    if (res.result === 'death'){
+      state.wind.nextGustAt = null;
+      return events;
+    }
+    state.wind.telegraphShown = false;
+    var doDouble = !!w.double && rng() < (w.doubleChance||0);
+    state.wind.nextGustAt = state.gameClock + (doDouble ? DOUBLE_GUST_GAP_MS : w.interval*1000);
+  }
+  return events;
+}
+
+// Picks a fair spawn tile for an ember: must be open floor, and never
+// right on top of (or immediately beside) the player.
+function pickEmberSpot(grid, size, player, rng){
+  var candidates = [];
+  for (var y=0;y<size;y++){
+    for (var x=0;x<size;x++){
+      if (grid[y][x].type !== 'empty') continue;
+      if (Math.abs(x-player.x)+Math.abs(y-player.y) < 2) continue;
+      candidates.push({x:x,y:y});
+    }
+  }
+  if (!candidates.length) return null;
+  return candidates[Math.floor(rng()*candidates.length)];
+}
+
+// Advances the ember scheduler: a single tile warns, then briefly becomes
+// a hazard tile (reusing the normal death checks in attemptMove/resolveGust
+// via tile.type==='ember'), then fades back to empty floor. At most one
+// ember is ever active at a time. In higher tiers cfg.patrol lets it step
+// to an adjacent open tile every cfg.stepMs while hot, instead of staying
+// put. Call every sim frame.
+function updateEmbers(state, grid, size, rng){
+  var cfg = state.level.embers;
+  if (!cfg) return [];
+  var events = [];
+
+  if (state.ember === null){
+    if (state.emberNextAt === null) state.emberNextAt = state.gameClock + cfg.interval*1000;
+    if (state.gameClock >= state.emberNextAt){
+      var spot = pickEmberSpot(grid, size, state.player, rng);
+      if (spot){
+        state.ember = { x:spot.x, y:spot.y, phase:'warn', phaseEndAt: state.gameClock + cfg.warnMs, nextStepAt:0 };
+        events.push({ type:'emberWarn', x:spot.x, y:spot.y });
+      } else {
+        state.emberNextAt = state.gameClock + 900; // board too crowded right now; try again shortly
+      }
+    }
+  } else if (state.ember.phase === 'warn'){
+    if (state.gameClock >= state.ember.phaseEndAt){
+      var t = grid[state.ember.y][state.ember.x];
+      if (t.type === 'empty'){
+        t.type = 'ember';
+        state.ember.phase = 'hot';
+        state.ember.phaseEndAt = state.gameClock + cfg.hazardMs;
+        state.ember.nextStepAt = state.gameClock + (cfg.stepMs||600);
+        events.push({ type:'emberHot', x:state.ember.x, y:state.ember.y });
+        if (state.player.x===state.ember.x && state.player.y===state.ember.y){
+          events.push({ type:'emberCaught' });
+        }
+      } else {
+        // tile got claimed by wax in the meantime - cancel this ember cleanly
+        state.ember = null;
+        state.emberNextAt = state.gameClock + cfg.interval*1000;
+      }
+    }
+  } else if (state.ember.phase === 'hot'){
+    if (cfg.patrol && state.gameClock >= state.ember.nextStepAt && state.gameClock < state.ember.phaseEndAt){
+      state.ember.nextStepAt = state.gameClock + (cfg.stepMs||600);
+      if (stepEmber(state, grid, size, rng)){
+        events.push({ type:'emberStep', x:state.ember.x, y:state.ember.y });
+        if (state.ember.x===state.player.x && state.ember.y===state.player.y){
+          events.push({ type:'emberCaught' });
+        }
+      }
+    }
+    if (state.gameClock >= state.ember.phaseEndAt){
+      var t2 = grid[state.ember.y][state.ember.x];
+      if (t2.type === 'ember') t2.type = 'empty';
+      events.push({ type:'emberFade', x:state.ember.x, y:state.ember.y });
+      state.ember = null;
+      state.emberNextAt = state.gameClock + cfg.interval*1000;
+    }
+  }
+  return events;
+}
+
+function stepEmber(state, grid, size, rng){
+  var cur = state.ember;
+  var candidates = [];
+  for (var i=0;i<4;i++){
+    var nx=cur.x+CARDINAL[i][0], ny=cur.y+CARDINAL[i][1];
+    if (inBounds(nx,ny,size) && grid[ny][nx].type==='empty') candidates.push({x:nx,y:ny});
+  }
+  if (!candidates.length) return false;
+  var pick = candidates[Math.floor(rng()*candidates.length)];
+  grid[cur.y][cur.x].type = 'empty';
+  grid[pick.y][pick.x].type = 'ember';
+  cur.x = pick.x; cur.y = pick.y;
+  return true;
+}
+
+// Chain Wax (always-on core rule): lighting a wick instantly dries any wet
+// wax directly adjacent to it - a small risk/reward players can trigger on
+// purpose (e.g. to wall something off early) or run into by accident.
+function chainWaxNear(grid, size, x, y){
+  var hardened = [];
+  for (var i=0;i<4;i++){
+    var nx=x+CARDINAL[i][0], ny=y+CARDINAL[i][1];
+    if (!inBounds(nx,ny,size)) continue;
+    var t = grid[ny][nx];
+    if (t.type==='waxWet' && !t.permanentlyWet){
+      t.type = 'waxHard'; t.hardenAt = null; t.wetSince = null;
+      hardened.push({x:nx,y:ny});
+    }
+  }
+  return hardened;
+}
+
+// Fading Wicks modifier (opt-in): lit non-gold wicks go dark again if left
+// unattended too long, forcing a return trip. Gold wicks are immune - their
+// bonus is a one-time moment, not something to fade-and-refarm.
+var WICK_FADE_MS = 9000;
+function updateWickFading(state, grid, size, gameClock){
+  var events = [];
+  if (!state.fadingWicksMode) return events;
+  for (var y=0;y<size;y++){
+    for (var x=0;x<size;x++){
+      var t = grid[y][x];
+      if (t.type==='wick' && t.lit && !t.isGold && t.litAt!==null && (gameClock-t.litAt)>=WICK_FADE_MS){
+        t.lit = false; t.litAt = null;
+        events.push({ type:'wickFaded', x:x, y:y, order:t.order });
+      }
+    }
+  }
+  return events;
+}
+
+// Progresses wet wax toward hardening. Returns events for tiles that
+// hardened this tick (for sound cues).
+function updateWaxHardening(grid, size, gameClock){
+  var events = [];
+  for (var y=0;y<size;y++){
+    for (var x=0;x<size;x++){
+      var t = grid[y][x];
+      if (t.type==='waxWet' && !t.permanentlyWet && t.hardenAt!==null && gameClock >= t.hardenAt){
+        t.type = 'waxHard';
+        t.hardenAt = null;
+        events.push({ type:'waxHardened', x:x, y:y });
+      }
+    }
+  }
+  return events;
+}
+
+function computeBoxedInRatio(grid, size, x, y){
+  var blocked = 0;
+  for (var i=0;i<4;i++){
+    var nx=x+CARDINAL[i][0], ny=y+CARDINAL[i][1];
+    if (!inBounds(nx,ny,size)){ blocked++; continue; }
+    var t = grid[ny][nx];
+    if (t.type==='water' || t.type==='waxHard') blocked++;
+  }
+  return blocked/4;
+}
+
+function getAvailableReliefOptions(grid, size){
+  var hasHardWax = gridHasType(grid, size, 'waxHard');
+  var all = ['melt','slowSet','smokeScreen','splinter'];
+  if (!hasHardWax) all = all.filter(function(o){ return o!=='melt'; });
+  return all;
+}
+
+function applyReliefEffect(state, choice){
+  if (choice==='slowSet'){
+    state.buffs.slowSetUntil = state.gameClock + SLOW_SET_DURATION_MS;
+  } else if (choice==='smokeScreen'){
+    state.buffs.smokeScreenCharges++;
+  } else if (choice==='splinter'){
+    state.buffs.splinterCharges++;
+  }
+  // 'melt' is handled separately via target selection, not here.
+}
+
+var RELIEF_META = {
+  melt:        { icon:'\u{1F4A7}', name:'Melt',        desc:'Clear one hardened wall, anywhere on the grid.' },
+  slowSet:     { icon:'\u23F3',    name:'Slow Set',     desc:'Wax stays soft twice as long for 10 seconds.' },
+  smokeScreen: { icon:'\u{1F32C}\uFE0F', name:'Smoke Screen', desc:"The next gust won't find you." },
+  splinter:    { icon:'\u2728',    name:'Splinter',     desc:'Your next drip refuses to dry.' }
+};
+
+// ===== LOGIC END =====
+
+// ===================================================================
+// ===== AUDIO ENGINE =====
+// ===================================================================
+var Audio_ = {
+  ctx: null, master: null, musicGain: null, sfxGain: null,
+  musicOn: true, sfxOn: true, started: false,
+  crackleTimer: null, currentBoxedRatio: 0
+};
+
+// A warm, slightly-bright four-chord loop (Cmaj7 - Am7 - Fmaj7 - G7),
+// arpeggiated with a light swing for a cozy-but-a-little-upbeat feel
+// rather than a static drone. A soft sustained pad glides beneath it,
+// always harmonically locked to whichever chord the arpeggio is on.
+var music = {
+  tempo: 94,
+  chords: [
+    [261.63, 329.63, 392.00, 493.88], // Cmaj7
+    [220.00, 261.63, 329.63, 392.00], // Am7
+    [174.61, 220.00, 261.63, 329.63], // Fmaj7
+    [196.00, 246.94, 293.66, 349.23]  // G7
+  ],
+  pattern: [0,1,2,3,2,1],
+  chordIdx: 0, patternIdx: 0,
+  nextNoteTime: 0, lookaheadSec: 0.1, schedulerMs: 25,
+  padGain: null, padOscA: null, padOscB: null
+};
+function noteDurationSec(){ return 60/music.tempo/2; }
+
+function audioInit(){
+  if (Audio_.started) return;
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    Audio_.ctx = new Ctx();
+    Audio_.master = Audio_.ctx.createGain();
+    Audio_.master.gain.value = settings.muted ? 0.0001 : 0.9;
+    Audio_.master.connect(Audio_.ctx.destination);
+
+    Audio_.musicGain = Audio_.ctx.createGain();
+    Audio_.musicGain.gain.value = Audio_.musicOn ? 0.5 : 0;
+    Audio_.musicGain.connect(Audio_.master);
+
+    Audio_.sfxGain = Audio_.ctx.createGain();
+    Audio_.sfxGain.gain.value = Audio_.sfxOn ? 0.85 : 0;
+    Audio_.sfxGain.connect(Audio_.master);
+
+    Audio_.started = true;
+    startAmbient();
+  } catch(e){ /* audio unavailable - game still fully playable silently */ }
+}
+
+function audioResume(){
+  if (Audio_.ctx && Audio_.ctx.state === 'suspended') Audio_.ctx.resume().catch(function(){});
+}
+
+function setMusicEnabled(on){
+  Audio_.musicOn = on;
+  if (Audio_.musicGain) Audio_.musicGain.gain.linearRampToValueAtTime(on?0.5:0.0001, Audio_.ctx.currentTime+0.18);
+}
+function setSfxEnabled(on){
+  Audio_.sfxOn = on;
+  if (Audio_.sfxGain) Audio_.sfxGain.gain.linearRampToValueAtTime(on?0.85:0.0001, Audio_.ctx.currentTime+0.18);
+}
+function setMasterMuted(m){
+  if (Audio_.master) Audio_.master.gain.linearRampToValueAtTime(m?0.0001:0.9, Audio_.ctx.currentTime+0.15);
+}
+
+function startAmbient(){
+  if (!Audio_.ctx) return;
+  var ctx = Audio_.ctx;
+
+  // soft sustained pad, harmonically tied to the arpeggio's current chord root
+  var padGain = ctx.createGain();
+  padGain.gain.value = 0;
+  padGain.connect(Audio_.musicGain);
+  var filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass'; filter.frequency.value = 780;
+  filter.connect(padGain);
+  var padOscA = ctx.createOscillator();
+  padOscA.type = 'sine'; padOscA.frequency.value = music.chords[0][0]/2;
+  var padOscB = ctx.createOscillator();
+  padOscB.type = 'triangle'; padOscB.frequency.value = music.chords[0][0];
+  padOscB.detune.value = 5;
+  padOscA.connect(filter); padOscB.connect(filter);
+  padOscA.start(); padOscB.start();
+  padGain.gain.linearRampToValueAtTime(0.13, ctx.currentTime+3.5);
+  music.padGain = padGain; music.padOscA = padOscA; music.padOscB = padOscB;
+
+  music.nextNoteTime = ctx.currentTime + 0.4;
+  musicSchedulerTick();
+
+  function crackleLoop(){
+    playCrackleBurst();
+    var next = 2100 - Audio_.currentBoxedRatio*1300 + Math.random()*2400;
+    Audio_.crackleTimer = setTimeout(crackleLoop, Math.max(400, next));
+  }
+  Audio_.crackleTimer = setTimeout(crackleLoop, 2200);
+}
+
+// Precise lookahead scheduler (schedules audio events using ctx.currentTime,
+// only using setTimeout to decide *when* to schedule the next batch) so the
+// arpeggio never drifts the way naive setTimeout-timed notes would.
+function scheduleArpNote(freq, time){
+  var ctx = Audio_.ctx;
+  var dur = noteDurationSec()*1.7;
+  var filt = ctx.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = 3400; filt.Q.value = 0.4;
+
+  var osc = ctx.createOscillator();
+  osc.type = 'triangle'; osc.frequency.value = freq;
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, time);
+  g.gain.exponentialRampToValueAtTime(0.15, time+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, time+dur);
+  osc.connect(filt); filt.connect(g); g.connect(Audio_.musicGain);
+  osc.start(time); osc.stop(time+dur+0.05);
+
+  var osc2 = ctx.createOscillator();
+  osc2.type = 'sine'; osc2.frequency.value = freq*2;
+  var g2 = ctx.createGain();
+  g2.gain.setValueAtTime(0.0001, time);
+  g2.gain.exponentialRampToValueAtTime(0.04, time+0.012);
+  g2.gain.exponentialRampToValueAtTime(0.0001, time+dur*0.55);
+  osc2.connect(g2); g2.connect(Audio_.musicGain);
+  osc2.start(time); osc2.stop(time+dur*0.55+0.05);
+}
+
+function musicSchedulerTick(){
+  if (!Audio_.ctx) return;
+  var ctx = Audio_.ctx;
+  while (music.nextNoteTime < ctx.currentTime + music.lookaheadSec){
+    var chord = music.chords[music.chordIdx];
+    var deg = music.pattern[music.patternIdx];
+    var swing = (music.patternIdx % 2 === 1) ? noteDurationSec()*0.14 : 0;
+    scheduleArpNote(chord[deg], music.nextNoteTime + swing);
+
+    music.patternIdx++;
+    if (music.patternIdx >= music.pattern.length){
+      music.patternIdx = 0;
+      music.chordIdx = (music.chordIdx+1) % music.chords.length;
+      if (music.padOscA && music.padOscB){
+        var root = music.chords[music.chordIdx][0];
+        var t = music.nextNoteTime;
+        music.padOscA.frequency.linearRampToValueAtTime(root/2, t+1.1);
+        music.padOscB.frequency.linearRampToValueAtTime(root, t+1.1);
+      }
+    }
+    music.nextNoteTime += noteDurationSec();
+  }
+  setTimeout(musicSchedulerTick, music.schedulerMs);
+}
+
+function playCrackleBurst(){
+  if (!Audio_.ctx) return;
+  var ctx = Audio_.ctx;
+  var dur = 0.05 + Math.random()*0.05;
+  var buf = ctx.createBuffer(1, Math.max(1,Math.floor(ctx.sampleRate*dur)), ctx.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * Math.pow(1-i/data.length, 2);
+  var src = ctx.createBufferSource();
+  src.buffer = buf;
+  var filt = ctx.createBiquadFilter();
+  filt.type = 'bandpass';
+  filt.frequency.value = 1700 + Math.random()*1500;
+  filt.Q.value = 0.8;
+  var g = ctx.createGain();
+  g.gain.value = 0.045 + Audio_.currentBoxedRatio*0.05;
+  src.connect(filt); filt.connect(g); g.connect(Audio_.musicGain);
+  src.start();
+}
+
+function playTone(freq, opts){
+  if (!Audio_.ctx || !Audio_.sfxOn) return;
+  opts = opts || {};
+  var ctx = Audio_.ctx;
+  var t0 = ctx.currentTime;
+  var dur = opts.dur || 0.5;
+  var vol = opts.vol!==undefined ? opts.vol : 0.3;
+  var attack = opts.attack!==undefined ? opts.attack : 0.008;
+
+  var osc = ctx.createOscillator();
+  osc.type = opts.type || 'sine';
+  osc.frequency.value = freq;
+  if (opts.slideTo) osc.frequency.linearRampToValueAtTime(opts.slideTo, t0+dur);
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(Math.max(vol,0.0005), t0+attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(g); g.connect(Audio_.sfxGain);
+  osc.start(t0); osc.stop(t0+dur+0.03);
+
+  if (opts.harmonic){
+    var osc2 = ctx.createOscillator();
+    osc2.type = 'sine'; osc2.frequency.value = freq*2;
+    var g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0.0001,t0);
+    g2.gain.exponentialRampToValueAtTime(vol*0.26, t0+attack);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t0+dur*0.7);
+    osc2.connect(g2); g2.connect(Audio_.sfxGain);
+    osc2.start(t0); osc2.stop(t0+dur*0.7+0.03);
+  }
+}
+
+function playNoiseBurst(opts){
+  if (!Audio_.ctx || !Audio_.sfxOn) return;
+  opts = opts || {};
+  var ctx = Audio_.ctx;
+  var dur = opts.dur || 0.15;
+  var buf = ctx.createBuffer(1, Math.max(1,Math.floor(ctx.sampleRate*dur)), ctx.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * Math.pow(1-i/data.length, opts.decayPow||1.5);
+  var src = ctx.createBufferSource();
+  src.buffer = buf;
+  var filt = ctx.createBiquadFilter();
+  filt.type = opts.filterType || 'bandpass';
+  filt.frequency.value = opts.freq || 1200;
+  if (opts.freqSlideTo) filt.frequency.linearRampToValueAtTime(opts.freqSlideTo, ctx.currentTime+dur);
+  filt.Q.value = opts.q || 1;
+  var g = ctx.createGain();
+  g.gain.value = opts.vol!==undefined ? opts.vol : 0.25;
+  src.connect(filt); filt.connect(g); g.connect(Audio_.sfxGain);
+  src.start();
+}
+
+function playTurnSound(){ playTone(640, { type:'triangle', dur:0.07, vol:0.11, attack:0.003 }); }
+function playHardenTick(){ playNoiseBurst({ dur:0.05, freq:900, q:2.2, vol:0.15, filterType:'bandpass' }); }
+
+var WICK_CHORD = [261.63,329.63,392.00,493.88,587.33,783.99,1046.50,1318.51,1567.98];
+function playWickChime(index){
+  playTone(WICK_CHORD[index % WICK_CHORD.length], { type:'sine', dur:1.3, vol:0.2, attack:0.006, harmonic:true });
+}
+function playWindTelegraph(){ playNoiseBurst({ dur:0.9, freq:400, freqSlideTo:1300, q:0.6, vol:0.045, filterType:'highpass' }); }
+function playWindGust(){ playNoiseBurst({ dur:0.35, freq:1500, freqSlideTo:200, q:0.7, vol:0.2, filterType:'lowpass' }); }
+function playEmberWarn(){ playNoiseBurst({ dur:0.5, freq:2200, freqSlideTo:3400, q:1.2, vol:0.045, filterType:'bandpass' }); }
+function playEmberIgnite(){
+  playNoiseBurst({ dur:0.18, freq:2600, freqSlideTo:900, q:1.5, vol:0.16, filterType:'bandpass' });
+  playTone(1100, { type:'triangle', dur:0.12, vol:0.06, attack:0.002 });
+}
+function playDeathSound(){
+  playTone(320, { type:'sine', dur:0.7, vol:0.2, slideTo:90, attack:0.01 });
+  playNoiseBurst({ dur:0.4, freq:800, freqSlideTo:150, vol:0.1, filterType:'lowpass' });
+}
+function playLevelCompleteFanfare(){
+  var notes = [261.63,329.63,392.00,523.25,659.25];
+  notes.forEach(function(freq, i){
+    setTimeout(function(){ playTone(freq, {type:'triangle', dur:0.5, vol:0.18, harmonic:true}); }, i*100);
+  });
+}
+function playGoldenShimmer(){
+  [783.99, 987.77, 1174.66].forEach(function(freq, i){
+    setTimeout(function(){ playTone(freq, {type:'sine', dur:0.5, vol:0.13}); }, i*55);
+  });
+}
+function playMeltSound(){ playNoiseBurst({ dur:0.3, freq:1800, freqSlideTo:500, vol:0.17, filterType:'bandpass', q:1.4 }); }
+function playUiClick(){ playTone(500, { type:'triangle', dur:0.05, vol:0.09, attack:0.002 }); }
+function playBonkSound(){ playTone(180, { type:'sine', dur:0.13, vol:0.12, slideTo:110, attack:0.004 }); }
+function playChainWaxSound(){ playNoiseBurst({ dur:0.22, freq:2000, freqSlideTo:700, vol:0.13, filterType:'bandpass', q:1.2 }); }
+function playWickFadeSound(){ playTone(440, { type:'sine', dur:0.35, vol:0.1, slideTo:220, attack:0.01 }); }
+function playUndoSound(){ playTone(700, { type:'triangle', dur:0.16, vol:0.12, slideTo:900, attack:0.005 }); }
+
+// ===================================================================
+// ===== RENDERING =====
+// ===================================================================
+var canvas, ctx, titleCanvas, titleCtx;
+var boardCssSize = 300;
+var tileSize = 30;
+var particles = [];
+
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  if (hex.length===3) hex = hex.split('').map(function(c){return c+c;}).join('');
+  var num = parseInt(hex,16);
+  return { r:(num>>16)&255, g:(num>>8)&255, b:num&255 };
+}
+function rgbStr(rgb,a){ return 'rgba('+(rgb.r|0)+','+(rgb.g|0)+','+(rgb.b|0)+','+(a===undefined?1:a)+')'; }
+function lerpRgb(a,b,t){ t=Math.max(0,Math.min(1,t)); return { r:a.r+(b.r-a.r)*t, g:a.g+(b.g-a.g)*t, b:a.b+(b.b-a.b)*t }; }
+
+var COL = {
+  waxWet: hexToRgb('fff2d8'),
+  waxHard: hexToRgb('d6c39a'), waxHardShadow: hexToRgb('8f7c56'),
+  water: hexToRgb('5088ae'), waterDeep: hexToRgb('2c5473'), waterHighlight: hexToRgb('bcd7e8'),
+  gold: hexToRgb('f0b93e'),
+  flameCore: hexToRgb('fff6e0'), flameAmber: hexToRgb('ffab3d'), flameEmber: hexToRgb('ff6b35'),
+  void_: hexToRgb('120e0a'), wickBody: hexToRgb('d9c9a8'), telegraph: hexToRgb('bcd7e8'),
+  ember: hexToRgb('ff7a3c'), emberCore: hexToRgb('ffe3a8'), emberWarn: hexToRgb('ff9d52'),
+  lampBrass: hexToRgb('b58542'), lampBrassDark: hexToRgb('4a3218'), lampBrassEdge: hexToRgb('d6a860')
+};
+
+// Smooth organic "blob" outline through a ring of wobbled points, seeded so
+// a given tile's shape stays stable frame-to-frame instead of jittering.
+function blobPath(cx,cy,r,seed,wobbleAmt){
+  var pts = 9;
+  wobbleAmt = wobbleAmt===undefined ? 0.14 : wobbleAmt;
+  var coords = [];
+  for (var i=0;i<pts;i++){
+    var ang = (i/pts)*Math.PI*2;
+    var wob = 1 + wobbleAmt*Math.sin(ang*3+seed*7.13) + wobbleAmt*0.5*Math.sin(ang*5+seed*2.7+1.3);
+    coords.push([cx+Math.cos(ang)*r*wob, cy+Math.sin(ang)*r*wob]);
+  }
+  ctx.beginPath();
+  var last = coords[pts-1], first = coords[0];
+  ctx.moveTo((last[0]+first[0])/2, (last[1]+first[1])/2);
+  for (var j=0;j<pts;j++){
+    var cur = coords[j], next = coords[(j+1)%pts];
+    ctx.quadraticCurveTo(cur[0], cur[1], (cur[0]+next[0])/2, (cur[1]+next[1])/2);
+  }
+  ctx.closePath();
+}
+
+// ---- unlockable flame color themes (cosmetic; mutates the shared COL flame entries) ----
+var FLAME_THEMES = {
+  classic: { name:'Classic', core:'fff6e0', amber:'ffab3d', ember:'ff6b35', unlock:null },
+  azure:   { name:'Azure',   core:'e8f6ff', amber:'4fb8e8', ember:'2d7fc4', unlock:{type:'levels', n:10} },
+  verdant: { name:'Verdant', core:'f0ffe0', amber:'7ed84f', ember:'3f9e2d', unlock:{type:'endlessDepth', n:15} },
+  violet:  { name:'Violet',  core:'f5e8ff', amber:'b878e8', ember:'7c3fc4', unlock:{type:'levels', n:20} }
+};
+function isThemeUnlocked(key){
+  var t = FLAME_THEMES[key];
+  if (!t || !t.unlock) return true;
+  if (t.unlock.type==='levels') return save.completedLevels.length >= t.unlock.n;
+  if (t.unlock.type==='endlessDepth') return save.bestEndlessDepth >= t.unlock.n;
+  return false;
+}
+function applyFlameTheme(key){
+  var t = FLAME_THEMES[key] || FLAME_THEMES.classic;
+  if (!isThemeUnlocked(key)) t = FLAME_THEMES.classic;
+  COL.flameCore = hexToRgb(t.core);
+  COL.flameAmber = hexToRgb(t.amber);
+  COL.flameEmber = hexToRgb(t.ember);
+}
+
+// ---- colorblind-safe palette (mutates shared COL water/wax/ember entries) ----
+var PALETTE_STANDARD   = { water:'5088ae', waterDeep:'2c5473', waxHard:'d6c39a', waxHardShadow:'8f7c56', ember:'ff7a3c', emberCore:'ffe3a8' };
+var PALETTE_COLORBLIND = { water:'2ec4c4', waterDeep:'1a7a7a', waxHard:'d68a3a', waxHardShadow:'8f5a1e', ember:'ff5a5a', emberCore:'fff2a0' };
+function applyColorblindPalette(on){
+  var p = on ? PALETTE_COLORBLIND : PALETTE_STANDARD;
+  COL.water = hexToRgb(p.water); COL.waterDeep = hexToRgb(p.waterDeep);
+  COL.waxHard = hexToRgb(p.waxHard); COL.waxHardShadow = hexToRgb(p.waxHardShadow);
+  COL.ember = hexToRgb(p.ember); COL.emberCore = hexToRgb(p.emberCore);
+}
+
+function initCanvas(){
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  titleCanvas = document.getElementById('titleFlame');
+  titleCtx = titleCanvas.getContext('2d');
+}
+
+function currentGridSize(){
+  if (state.mode==='editor') return editor.size;
+  return (state.level && state.level.size) ? state.level.size : 10;
+}
+
+function resizeCanvas(){
+  if (!canvas) return;
+  var wrap = document.getElementById('boardWrap');
+  var availW = wrap.clientWidth - 4;
+  var availH = wrap.clientHeight - 4;
+  var size = Math.max(200, Math.min(availW, availH, 620));
+  boardCssSize = size;
+  var dpr = Math.min(window.devicePixelRatio||1, 2.5);
+  canvas.style.width = size+'px';
+  canvas.style.height = size+'px';
+  canvas.width = Math.round(size*dpr);
+  canvas.height = Math.round(size*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  tileSize = size / currentGridSize();
+  initMotes(14);
+}
+
+function gridToPixel(gx,gy){ return { x: gx*tileSize, y: gy*tileSize }; }
+function pixelToGrid(clientX, clientY){
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = boardCssSize / rect.width, scaleY = boardCssSize / rect.height;
+  var x = (clientX-rect.left)*scaleX, y = (clientY-rect.top)*scaleY;
+  return { x: Math.floor(x/tileSize), y: Math.floor(y/tileSize) };
+}
+
+function roundRectPath(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// ---- particles (sparkles on wick-light, puff on death) ----
+function spawnParticles(gx,gy,color,count,opts){
+  opts = opts||{};
+  var p = gridToPixel(gx,gy);
+  var cx = p.x+tileSize/2, cy = p.y+tileSize/2;
+  for (var i=0;i<count;i++){
+    var ang = Math.random()*Math.PI*2;
+    var spd = (opts.speed||0.7)*(0.5+Math.random());
+    particles.push({
+      x:cx, y:cy,
+      vx:Math.cos(ang)*spd*tileSize, vy:Math.sin(ang)*spd*tileSize - (opts.rise||0)*tileSize,
+      life:0, maxLife:(opts.life||0.6)+Math.random()*0.3,
+      color:color, size:(opts.size||3)*(0.7+Math.random()*0.6), gravity:opts.gravity||0
+    });
+  }
+}
+function updateParticles(dt){
+  for (var i=particles.length-1;i>=0;i--){
+    var p = particles[i];
+    p.life += dt;
+    if (p.life>=p.maxLife){ particles.splice(i,1); continue; }
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.vy += p.gravity*dt;
+  }
+}
+function drawParticles(){
+  for (var i=0;i<particles.length;i++){
+    var p = particles[i];
+    var t = p.life/p.maxLife, alpha = 1-t;
+    ctx.beginPath();
+    ctx.fillStyle = rgbStr(p.color, alpha);
+    ctx.arc(p.x,p.y, Math.max(0.4,p.size*(1-t*0.6)), 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+// ---- board & tiles ----
+function drawBoard(ts){
+  var size = currentGridSize();
+  ctx.clearRect(0,0,boardCssSize,boardCssSize);
+  ctx.fillStyle = '#251c14';
+  ctx.fillRect(0,0,boardCssSize,boardCssSize);
+  for (var y=0;y<size;y++){
+    for (var x=0;x<size;x++){
+      drawTile(x,y,state.grid[y][x],ts);
+    }
+  }
+}
+
+function drawTile(gx,gy,tile,ts){
+  var p = gridToPixel(gx,gy);
+  var checker = ((gx+gy)%2===0);
+  ctx.fillStyle = checker ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.07)';
+  ctx.fillRect(p.x,p.y,tileSize+0.6,tileSize+0.6);
+
+  var pad = tileSize*0.07;
+  var x=p.x+pad, y=p.y+pad, s=tileSize-pad*2;
+  var seed = gx*4.2+gy*9.1;
+
+  if (tile.type==='water'){
+    var shim = 0.5+0.5*Math.sin(ts/1000 + gx*0.8+gy*1.4);
+    var c = lerpRgb(COL.waterDeep, COL.water, shim*0.5+0.25);
+    roundRectPath(x,y,s,s,s*0.2);
+    ctx.fillStyle = rgbStr(c,1); ctx.fill();
+    ctx.save();
+    roundRectPath(x,y,s,s,s*0.2); ctx.clip();
+    var wcx=x+s/2, wcy=y+s/2;
+    for (var ri=0; ri<2; ri++){
+      var phase = ((ts/1800 + seed + ri*0.5) % 1);
+      var ringR = phase*s*0.7, ringA = (1-phase)*0.22;
+      if (ringA>0.01){
+        ctx.beginPath(); ctx.arc(wcx,wcy,ringR,0,Math.PI*2);
+        ctx.strokeStyle = rgbStr(COL.waterHighlight, ringA);
+        ctx.lineWidth = Math.max(0.6, tileSize*0.02);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    ctx.strokeStyle = rgbStr(COL.waterDeep,0.6);
+    ctx.lineWidth = Math.max(1,tileSize*0.03);
+    roundRectPath(x,y,s,s,s*0.2); ctx.stroke();
+  } else if (tile.type==='waxWet'){
+    var prog = 0;
+    if (!tile.permanentlyWet && tile.wetSince!==null && tile.hardenAt!==null){
+      prog = (state.gameClock - tile.wetSince) / Math.max(1,(tile.hardenAt - tile.wetSince));
+      prog = Math.max(0,Math.min(1,prog));
+    }
+    var c2 = lerpRgb(COL.waxWet, COL.waxHard, prog*0.7);
+    blobPath(x+s/2,y+s/2,s*0.52,seed,0.16);
+    ctx.fillStyle = rgbStr(c2,1); ctx.fill();
+    var glistenA = (1-prog)*0.55 + (tile.permanentlyWet?0.3:0);
+    if (glistenA>0.02){
+      var g = ctx.createRadialGradient(x+s*0.34,y+s*0.3,0, x+s*0.34,y+s*0.3,s*0.5);
+      g.addColorStop(0, rgbStr(COL.flameCore, glistenA));
+      g.addColorStop(1, rgbStr(COL.flameCore, 0));
+      ctx.fillStyle = g;
+      blobPath(x+s/2,y+s/2,s*0.52,seed,0.16); ctx.fill();
+    }
+    if (tile.permanentlyWet){
+      ctx.strokeStyle = rgbStr(COL.gold, 0.3+0.2*Math.sin(ts/300));
+      ctx.lineWidth = Math.max(1,tileSize*0.035);
+      blobPath(x+s/2,y+s/2,s*0.57,seed,0.16); ctx.stroke();
+    }
+  } else if (tile.type==='waxHard'){
+    blobPath(x+s/2,y+s/2,s*0.52,seed,0.16);
+    ctx.fillStyle = rgbStr(COL.waxHard,1); ctx.fill();
+    ctx.save();
+    blobPath(x+s/2,y+s/2,s*0.52,seed,0.16); ctx.clip();
+    ctx.fillStyle = rgbStr(COL.waxHardShadow,0.32);
+    ctx.fillRect(x,y+s*0.6,s,s*0.4);
+    ctx.fillStyle = rgbStr(COL.waxHardShadow,0.22);
+    ctx.beginPath(); ctx.ellipse(x+s*0.5,y+s*0.72,s*0.09,s*0.22,0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  } else if (tile.type==='ember'){
+    var pulse = 0.7+0.3*Math.sin(ts/85);
+    var glow = ctx.createRadialGradient(x+s/2,y+s/2,0, x+s/2,y+s/2,s*0.85);
+    glow.addColorStop(0, rgbStr(COL.emberCore, 0.45*pulse));
+    glow.addColorStop(1, rgbStr(COL.ember, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(x-s*0.35,y-s*0.35,s*1.7,s*1.7);
+    blobPath(x+s/2,y+s/2,s*0.48,seed,0.2);
+    ctx.fillStyle = rgbStr(COL.ember,1); ctx.fill();
+    blobPath(x+s/2,y+s/2,s*0.24*pulse,seed+3,0.25);
+    ctx.fillStyle = rgbStr(COL.emberCore,0.92); ctx.fill();
+  } else if (tile.type==='wick'){
+    drawWick(x,y,s,tile,ts);
+  }
+}
+
+function drawWick(x,y,s,tile,ts){
+  var cx=x+s/2;
+  var bodyTop = y+s*0.5, bodyBottom = y+s*0.82, bodyW = s*0.3;
+
+  ctx.fillStyle = 'rgba(20,14,8,0.18)';
+  ctx.beginPath(); ctx.ellipse(cx, bodyBottom+s*0.02, s*0.24, s*0.07, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(230,216,182,0.4)';
+  roundRectPath(cx-bodyW/2, bodyTop, bodyW, bodyBottom-bodyTop, bodyW*0.2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(150,132,96,0.25)';
+  ctx.lineWidth = Math.max(0.6, tileSize*0.015);
+  roundRectPath(cx-bodyW/2, bodyTop, bodyW, bodyBottom-bodyTop, bodyW*0.2);
+  ctx.stroke();
+
+  if (!tile.lit){
+    ctx.strokeStyle = tile.isGold ? rgbStr(COL.gold,0.9) : 'rgba(90,78,58,0.6)';
+    ctx.lineWidth = Math.max(1.1, tileSize*0.04);
+    ctx.beginPath(); ctx.moveTo(cx,bodyTop); ctx.lineTo(cx-s*0.03,bodyTop-s*0.2); ctx.stroke();
+    if (tile.isGold){
+      var pulse = 0.5+0.5*Math.sin(ts/260);
+      ctx.beginPath();
+      ctx.fillStyle = rgbStr(COL.gold, 0.22+0.22*pulse);
+      ctx.arc(cx,bodyTop-s*0.05,s*0.4,0,Math.PI*2); ctx.fill();
+    }
+  } else {
+    var flameY = bodyTop-s*0.16;
+    var flick = state.settingsRef && state.settingsRef.reducedMotion ? 0.85 : 0.75+0.25*Math.sin(ts/95+cx*3);
+    var col = tile.isGold ? COL.gold : COL.flameAmber;
+    var grad = ctx.createRadialGradient(cx,flameY,0,cx,flameY,s*0.5*flick);
+    grad.addColorStop(0, rgbStr(COL.flameCore,0.95));
+    grad.addColorStop(0.5, rgbStr(col,0.7));
+    grad.addColorStop(1, rgbStr(col,0));
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx,flameY,s*0.46*flick,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,78,58,0.45)';
+    ctx.lineWidth = Math.max(1,tileSize*0.03);
+    ctx.beginPath(); ctx.moveTo(cx,bodyTop); ctx.lineTo(cx,bodyTop-s*0.1); ctx.stroke();
+  }
+}
+
+// ---- flame (shared by player + title screen) ----
+function drawTeardrop(cx,cy,w,h,lean,color,alpha){
+  ctx.beginPath();
+  ctx.moveTo(cx, cy-h*0.55);
+  ctx.bezierCurveTo(cx+w*0.55+lean, cy-h*0.15, cx+w*0.42+lean*1.4, cy+h*0.42, cx, cy+h*0.55);
+  ctx.bezierCurveTo(cx-w*0.42+lean*1.4, cy+h*0.42, cx-w*0.55+lean, cy-h*0.15, cx, cy-h*0.55);
+  ctx.closePath();
+  ctx.fillStyle = rgbStr(color, alpha);
+  ctx.fill();
+}
+
+// Pure flame glow+teardrops at local (cx,cy), no outer transform - shared by
+// the standalone bare-flame renderer (lit wicks keep this simpler look) and
+// the lamp's housed flame below.
+function drawFlameCore(cx,cy,radius,ts,boxedRatio,reducedMotion){
+  var flickAmp = reducedMotion ? 0.05 : 0.15 + boxedRatio*0.22;
+  var flickSpeed = reducedMotion ? 70 : 42 - boxedRatio*18;
+  var n1 = Math.sin(ts/flickSpeed), n2 = Math.sin(ts/(flickSpeed*0.53)+1.7);
+  var wob = (n1*0.6+n2*0.4)*flickAmp;
+  var r = radius*(1+wob*0.5);
+  var idleLean = reducedMotion ? 0 : (n2*0.12*radius);
+
+  var glowR = r*2.6;
+  var glow = ctx.createRadialGradient(cx,cy,0,cx,cy,glowR);
+  glow.addColorStop(0, rgbStr(COL.flameAmber, 0.26+boxedRatio*0.12));
+  glow.addColorStop(1, rgbStr(COL.flameAmber, 0));
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(cx,cy,glowR,0,Math.PI*2); ctx.fill();
+
+  ctx.save();
+  ctx.translate(cx,cy);
+  drawTeardrop(0,0, r*1.15, r*1.65, idleLean*0.6, COL.flameEmber, 0.9);
+  drawTeardrop(0,r*0.08, r*0.78, r*1.15, idleLean, COL.flameAmber, 0.95);
+  drawTeardrop(0,r*0.2, r*0.4, r*0.62, idleLean*1.3, COL.flameCore, 1);
+  ctx.restore();
+}
+
+// Standalone bare flame with its own movement-tilt transform. Kept for any
+// future direct use; lit wick candles render their own simpler flame inline
+// and don't call this.
+function drawFlame(cx,cy,radius,ts,boxedRatio,reducedMotion,moveDv,moveLean){
+  var tiltRad = 0, stretchY = 1;
+  if (moveDv && moveLean && !reducedMotion){
+    tiltRad = -moveDv.x * moveLean * 0.3;
+    stretchY = 1 + Math.abs(moveDv.y) * moveLean * 0.16;
+  }
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(tiltRad);
+  ctx.scale(1, stretchY);
+  drawFlameCore(0,0,radius,ts,boxedRatio,reducedMotion);
+  ctx.restore();
+}
+
+// A small vintage hurricane lantern: brass foot and fuel body, a tapered
+// glass chimney housing the flame, a brass cap, and a wire carry handle.
+// This is what the player actually is now - not a bare flame - carried
+// through the room and swung gently with movement.
+function drawLampBody(cx,cy,r,ts,boxedRatio,reducedMotion){
+  var brass = COL.lampBrass, brassDark = COL.lampBrassDark, brassEdge = COL.lampBrassEdge;
+  var edgeW = Math.max(0.6, r*0.02);
+
+  // foot
+  ctx.fillStyle = rgbStr(brassDark,1);
+  roundRectPath(cx-r*0.52, cy+r*0.78, r*1.04, r*0.2, r*0.07);
+  ctx.fill();
+  ctx.strokeStyle = rgbStr(brassEdge,0.9); ctx.lineWidth = edgeW;
+  roundRectPath(cx-r*0.52, cy+r*0.78, r*1.04, r*0.2, r*0.07);
+  ctx.stroke();
+
+  // fuel body (bulb)
+  ctx.beginPath();
+  ctx.ellipse(cx, cy+r*0.5, r*0.5, r*0.36, 0, 0, Math.PI*2);
+  ctx.fillStyle = rgbStr(brass,1);
+  ctx.fill();
+  ctx.strokeStyle = rgbStr(brassEdge,0.9); ctx.lineWidth = edgeW*1.3;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx-r*0.16, cy+r*0.4, r*0.15, r*0.09, -0.4, 0, Math.PI*2);
+  ctx.fillStyle = rgbStr(brassEdge, 0.5);
+  ctx.fill();
+
+  // glass chimney (tapered, translucent so the flame reads clearly through it)
+  ctx.beginPath();
+  ctx.moveTo(cx-r*0.3, cy+r*0.18);
+  ctx.lineTo(cx-r*0.38, cy-r*0.5);
+  ctx.quadraticCurveTo(cx-r*0.4, cy-r*0.78, cx-r*0.2, cy-r*0.88);
+  ctx.lineTo(cx+r*0.2, cy-r*0.88);
+  ctx.quadraticCurveTo(cx+r*0.4, cy-r*0.78, cx+r*0.38, cy-r*0.5);
+  ctx.lineTo(cx+r*0.3, cy+r*0.18);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,246,224,0.11)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,246,224,0.42)';
+  ctx.lineWidth = Math.max(0.7, r*0.04);
+  ctx.stroke();
+
+  // the flame, housed inside the glass - deliberately small so the glass
+  // silhouette stays legible around it
+  drawFlameCore(cx, cy-r*0.24, r*0.4, ts, boxedRatio, reducedMotion);
+
+  // cap
+  ctx.fillStyle = rgbStr(brassDark,1);
+  roundRectPath(cx-r*0.25, cy-r*0.98, r*0.5, r*0.14, r*0.03);
+  ctx.fill();
+  ctx.strokeStyle = rgbStr(brassEdge,0.9); ctx.lineWidth = edgeW;
+  roundRectPath(cx-r*0.25, cy-r*0.98, r*0.5, r*0.14, r*0.03);
+  ctx.stroke();
+
+  // wire carry handle
+  ctx.strokeStyle = rgbStr(brassEdge,1);
+  ctx.lineWidth = Math.max(1.2, r*0.075);
+  ctx.beginPath();
+  ctx.arc(cx, cy-r*0.96, r*0.36, Math.PI*1.12, Math.PI*1.88);
+  ctx.stroke();
+}
+
+function drawLamp(cx,cy,radius,ts,boxedRatio,reducedMotion,tiltRad,pulse){
+  var scalePulse = 1 + (pulse||0)*0.1;
+  ctx.save();
+  ctx.translate(cx,cy);
+  if (tiltRad) ctx.rotate(tiltRad);
+  if (scalePulse!==1) ctx.scale(scalePulse, scalePulse);
+  drawLampBody(0,0,radius,ts,boxedRatio,reducedMotion);
+  ctx.restore();
+}
+
+// ---- lamp trail: a short fading history of recent positions, so movement
+// reads as a continuous flow of light rather than a token hopping between
+// tiles ----
+var lampTrail = [];
+function resetLampTrail(){ lampTrail = []; }
+function updateLampTrail(){
+  lampTrail.push({ x: state.player.renderX, y: state.player.renderY });
+  if (lampTrail.length > 10) lampTrail.shift();
+}
+function drawLampTrail(){
+  var n = lampTrail.length;
+  if (n < 2) return;
+  for (var i=0;i<n;i++){
+    var pt = lampTrail[i];
+    var age = i/(n-1);
+    var rad = tileSize*0.15*age;
+    if (rad <= 0.5) continue;
+    var p = gridToPixel(pt.x, pt.y);
+    var cx = p.x+tileSize/2, cy = p.y+tileSize/2;
+    var g = ctx.createRadialGradient(cx,cy,0,cx,cy,rad);
+    g.addColorStop(0, rgbStr(COL.flameAmber, 0.15*age));
+    g.addColorStop(1, rgbStr(COL.flameAmber, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.fill();
+  }
+}
+
+// Continuous spring-chase movement: state.player.x/y is the authoritative
+// grid cell, still updated in discrete steps by the unchanged tick/rules
+// engine on exactly the same schedule as before (so difficulty/timing is
+// untouched). Rather than animating a fixed-duration tween each time that
+// happens, the render position continuously closes the gap toward wherever
+// the true position currently is, every single frame. That means input has
+// no perceived latency to wait out - the instant a tick (or a gust, or an
+// undo) changes the true position, the follower starts reacting on the very
+// next frame instead of waiting for a prior per-tile animation to finish.
+var LAMP_FOLLOW_RATE = 15;
+function updatePlayerRenderPos(dt){
+  var dx = state.player.x - state.player.renderX;
+  var dy = state.player.y - state.player.renderY;
+  if (Math.abs(dx) < 0.0015 && Math.abs(dy) < 0.0015){
+    state.player.renderX = state.player.x;
+    state.player.renderY = state.player.y;
+    state.player.velX = 0; state.player.velY = 0;
+  } else {
+    var factor = 1 - Math.exp(-LAMP_FOLLOW_RATE * dt);
+    state.player.velX = dx*factor/Math.max(dt,0.0001);
+    state.player.velY = dy*factor/Math.max(dt,0.0001);
+    state.player.renderX += dx*factor;
+    state.player.renderY += dy*factor;
+  }
+  if (state.player.inputPulse>0) state.player.inputPulse = Math.max(0, state.player.inputPulse - dt*4.5);
+  updateLampTrail();
+}
+
+function drawPlayer(ts){
+  var rx = state.player.renderX, ry = state.player.renderY;
+  var p = gridToPixel(rx, ry);
+  var cx = p.x+tileSize/2, cy = p.y+tileSize/2;
+  var boxed = computeBoxedInRatio(state.grid, currentGridSize(), state.player.x, state.player.y);
+  Audio_.currentBoxedRatio = boxed;
+  drawLampTrail();
+  var reduced = state.settingsRef && state.settingsRef.reducedMotion;
+  var tiltRad = reduced ? 0 : Math.max(-0.26, Math.min(0.26, -(state.player.velX||0)*0.11));
+  drawLamp(cx,cy, tileSize*0.34, ts, boxed, reduced, tiltRad, state.player.inputPulse);
+}
+
+function renderTitleFlame(ts){
+  if (!titleCtx) return;
+  titleCtx.clearRect(0,0,64,88);
+  var saved = ctx; ctx = titleCtx;
+  drawLamp(32,56,19,ts,0.1, state.settingsRef && state.settingsRef.reducedMotion);
+  ctx = saved;
+}
+
+// ---- wind telegraph ----
+function drawWindTelegraph(ts){
+  if (!state.level.wind || !state.wind.telegraphShown) return;
+  var p = gridToPixel(state.player.renderX, state.player.renderY);
+  var cx = p.x+tileSize/2, cy = p.y+tileSize/2;
+  var dv = DIR_VECS[state.wind.direction];
+  var dist = tileSize*1.15;
+  var ax = cx+dv.x*dist, ay = cy+dv.y*dist;
+  var reduced = state.settingsRef && state.settingsRef.reducedMotion;
+  var pulse = reduced ? 0.8 : 0.55+0.45*Math.sin(ts/110);
+  ctx.save();
+  ctx.translate(ax,ay);
+  ctx.rotate(Math.atan2(dv.y,dv.x));
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = rgbStr(COL.telegraph,1);
+  var s = tileSize*0.28;
+  ctx.beginPath();
+  ctx.moveTo(s,0); ctx.lineTo(-s*0.5,s*0.65); ctx.lineTo(-s*0.15,0); ctx.lineTo(-s*0.5,-s*0.65);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawEmberTelegraph(ts){
+  if (!state.ember || state.ember.phase !== 'warn') return;
+  var p = gridToPixel(state.ember.x, state.ember.y);
+  var cx = p.x+tileSize/2, cy = p.y+tileSize/2;
+  var reduced = state.settingsRef && state.settingsRef.reducedMotion;
+  var pulse = reduced ? 0.7 : 0.5+0.5*Math.sin(ts/90);
+  var r = tileSize*0.42*(0.85+0.15*pulse);
+  var g = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+  g.addColorStop(0, rgbStr(COL.emberWarn, 0.55*pulse+0.15));
+  g.addColorStop(1, rgbStr(COL.emberWarn, 0));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+}
+
+function drawWickOrderBadges(ts){
+  var size = currentGridSize();
+  for (var y=0;y<size;y++){
+    for (var x=0;x<size;x++){
+      var t = state.grid[y][x];
+      if (t.type!=='wick' || t.lit || t.order<0) continue;
+      var p = gridToPixel(x,y);
+      var cx = p.x+tileSize*0.78, cy = p.y+tileSize*0.24;
+      var isNext = t.order === state.nextWickOrder;
+      var pulse = isNext ? (0.6+0.4*Math.sin(ts/200)) : 1;
+      ctx.beginPath();
+      ctx.arc(cx,cy,tileSize*0.15*pulse,0,Math.PI*2);
+      ctx.fillStyle = isNext ? rgbStr(COL.gold,0.95) : 'rgba(20,14,8,0.55)';
+      ctx.fill();
+      ctx.fillStyle = isNext ? '#241a08' : 'rgba(243,233,214,0.7)';
+      ctx.font = Math.max(8,tileSize*0.18)+'px Inter, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(t.order+1), cx, cy+0.5);
+    }
+  }
+}
+
+// ---- ambient dust motes (purely decorative, always drifting) ----
+var motes = [];
+function initMotes(count){
+  motes = [];
+  for (var i=0;i<count;i++){
+    motes.push({
+      x: Math.random()*boardCssSize, y: Math.random()*boardCssSize,
+      vx: (Math.random()-0.5)*4, vy: -3-Math.random()*4,
+      size: 1+Math.random()*1.8,
+      phase: Math.random()*Math.PI*2,
+      alphaBase: 0.14+Math.random()*0.22
+    });
+  }
+}
+function updateMotes(dt){
+  for (var i=0;i<motes.length;i++){
+    var m = motes[i];
+    m.x += m.vx*dt; m.y += m.vy*dt;
+    m.phase += dt*1.5;
+    if (m.y < -10 || m.x < -10 || m.x > boardCssSize+10){
+      m.x = Math.random()*boardCssSize; m.y = boardCssSize+10;
+      m.vx = (Math.random()-0.5)*4; m.vy = -3-Math.random()*4;
+    }
+  }
+}
+function drawMotes(){
+  for (var i=0;i<motes.length;i++){
+    var m = motes[i];
+    var flicker = 0.6+0.4*Math.sin(m.phase);
+    ctx.beginPath();
+    ctx.fillStyle = rgbStr(COL.flameAmber, m.alphaBase*flicker);
+    ctx.arc(m.x, m.y, m.size, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+// ---- soft candlelight vignette (always on, subtle - the flame is the only light source) ----
+function drawVignette(ts){
+  var p = gridToPixel(state.player.renderX, state.player.renderY);
+  var cx = p.x+tileSize/2, cy = p.y+tileSize/2;
+  var g = ctx.createRadialGradient(cx,cy,boardCssSize*0.3, cx,cy,boardCssSize*0.95);
+  g.addColorStop(0, rgbStr(COL.void_, 0));
+  g.addColorStop(1, rgbStr(COL.void_, 0.38));
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,boardCssSize,boardCssSize);
+}
+
+// ---- fog of war (Blackout tier) ----
+function drawFog(ts){
+  var fogR = state.level.fog;
+  if (!fogR || state.introActive) return;
+  var size = currentGridSize();
+  var pcx = state.player.renderX+0.5, pcy = state.player.renderY+0.5;
+  for (var y=0;y<size;y++){
+    for (var x=0;x<size;x++){
+      var dx=(x+0.5)-pcx, dy=(y+0.5)-pcy;
+      var dist = Math.sqrt(dx*dx+dy*dy);
+      var a;
+      if (dist<=fogR-0.4) a=0;
+      else if (dist>=fogR+FOG_SOFT_BAND) a=1;
+      else a=(dist-(fogR-0.4))/(FOG_SOFT_BAND+0.4);
+      if (a<=0.02) continue;
+      var p2 = gridToPixel(x,y);
+      ctx.fillStyle = rgbStr(COL.void_, Math.min(0.97,a));
+      ctx.fillRect(p2.x-1,p2.y-1,tileSize+2,tileSize+2);
+    }
+  }
+}
+
+function render(ts,dt){
+  if (!canvas) return;
+  if (state.mode !== 'playing'){
+    if (state.mode==='menu') renderTitleFlame(ts);
+    else if (state.mode==='editor') renderEditor(ts);
+    return;
+  }
+  updatePlayerRenderPos(dt);
+  drawBoard(ts);
+  updateParticles(dt);
+  drawParticles();
+  updateMotes(dt);
+  drawMotes();
+  drawVignette(ts);
+  if (!state.introActive){
+    drawWindTelegraph(ts);
+    drawEmberTelegraph(ts);
+    if (state.orderedMode) drawWickOrderBadges(ts);
+  }
+  drawPlayer(ts);
+  drawFog(ts);
+}
+
+// ===================================================================
+// ===== GLOBAL STATE =====
+// ===================================================================
+var settings = {
+  music:true, sfx:true, reducedMotion:false, speed:'normal', muted:false,
+  mod_fadingWicks:false, mod_orderedWicks:false, mod_zen:false, mod_undoAssist:false,
+  colorblindPalette:false, largeTapTargets:false, flameTheme:'classic'
+};
+var save = {
+  unlockedLevel:1, completedLevels:[], bestEndlessDepth:0, bestEndlessScore:0,
+  levelBests:{}, flawlessLevels:[], bestTimeAttackMs:null, dailyBest:null,
+  achievements:[], customLevels:[], goldWicksLit:0, gustsSurvived:0,
+  emberLevelsCleared:0, speedWaxAchieved:false, dailyCompletions:0,
+  unlockedThemesSeen:[], hasSeenHowTo:false
+};
+
+var state = {
+  mode:'menu', simPaused:false, introActive:false, introStartTs:0, introDuration:0,
+  isEndless:false, currentLevelNum:1, endlessDepth:1, endlessSeed:0, endlessWaxTotal:0,
+  isTimeAttack:false, timeAttackElapsedMs:0, timeAttackLevelNum:1,
+  isDaily:false, isEditorPlaytest:false,
+  level:null, grid:null,
+  player:{x:0,y:0,heading:0,stepCount:0, renderX:0, renderY:0, velX:0, velY:0, inputPulse:0},
+  wicksLit:0, wicksTotal:0, waxPlacedCount:0, anyWaxHardened:false,
+  gameClock:0, lastTickGameTime:0, tickInterval:300,
+  wind:{nextGustAt:null,telegraphShown:false,direction:0},
+  ember:null, emberNextAt:null,
+  buffs:{slowSetUntil:0,smokeScreenCharges:0,splinterCharges:0},
+  reliefChoiceActive:false, meltTargeting:false, meltCallback:null,
+  orderedMode:false, nextWickOrder:0, fadingWicksMode:false, zenMode:false,
+  undoAssistMode:false, undoCharge:0, undoSnapshot:null,
+  deathReason:null, rng:null,
+  settingsRef: settings
+};
+
+var DEATH_LINES = {
+  boundary: ['Right off the edge of the table.', 'Into the dark beyond the grid.'],
+  water:    ['Hiss... the water wins this round.', 'Doused.'],
+  wax:      ['Hardened wax. Hard stop.', "The wall wasn't there a second ago. Or was it."],
+  ember:    ['That patch was hotter than it looked.', 'Ember caught you off guard.']
+};
+
+// ===================================================================
+// ===== STORAGE (window.storage with localStorage fallback for GitHub Pages) =====
+// ===================================================================
+function hasClaudeStorage(){
+  return typeof window !== 'undefined' && !!window.storage &&
+    typeof window.storage.get === 'function' && typeof window.storage.set === 'function';
+}
+
+function loadSave(){
+  return new Promise(function(resolve){
+    function applyRaw(raw){
+      try {
+        if (raw){
+          var data = JSON.parse(raw);
+          if (data.save) for (var k in data.save) save[k] = data.save[k];
+          if (data.settings) for (var k2 in data.settings) settings[k2] = data.settings[k2];
+        }
+      } catch(e){ /* corrupt save, defaults stand */ }
+      resolve();
+    }
+    if (hasClaudeStorage()){
+      window.storage.get(STORAGE_KEY).then(function(res){
+        applyRaw(res ? res.value : null);
+      }).catch(function(){
+        try { applyRaw(localStorage.getItem(STORAGE_KEY)); } catch(e){ resolve(); }
+      });
+    } else {
+      try { applyRaw(localStorage.getItem(STORAGE_KEY)); } catch(e){ resolve(); }
+    }
+  });
+}
+
+function persistSave(){
+  var payload = JSON.stringify({ save:save, settings:settings });
+  if (hasClaudeStorage()){
+    window.storage.set(STORAGE_KEY, payload).catch(function(){
+      try { localStorage.setItem(STORAGE_KEY, payload); } catch(e){ /* no persistence available */ }
+    });
+  } else {
+    try { localStorage.setItem(STORAGE_KEY, payload); } catch(e){ /* no persistence available */ }
+  }
+}
+
+function resetAllProgress(){
+  if (!window.confirm('Reset all progress? This clears level unlocks, best times, achievements, unlocked flame colors, and saved custom levels. This cannot be undone.')) return;
+  save.unlockedLevel = 1; save.completedLevels = []; save.bestEndlessDepth = 0; save.bestEndlessScore = 0;
+  save.levelBests = {}; save.flawlessLevels = []; save.bestTimeAttackMs = null; save.dailyBest = null;
+  save.achievements = []; save.customLevels = []; save.goldWicksLit = 0; save.gustsSurvived = 0;
+  save.emberLevelsCleared = 0; save.speedWaxAchieved = false; save.dailyCompletions = 0;
+  save.unlockedThemesSeen = [];
+  settings.flameTheme = 'classic';
+  applyFlameTheme('classic');
+  persistSave();
+  updateMenuBests();
+  syncSettingsUI();
+  showToast('Progress reset');
+}
+
+// ===================================================================
+// ===== ACHIEVEMENTS =====
+// ===================================================================
+var ACHIEVEMENTS = [
+  { id:'first_light',   name:'First Light',    desc:'Clear Level 1',                          icon:'\u{1F56F}\uFE0F', check:function(){ return save.completedLevels.indexOf(1)!==-1; } },
+  { id:'flawless',      name:'Flawless',       desc:'Clear a level without letting wax harden', icon:'\u2728',          check:function(){ return save.flawlessLevels.length>0; } },
+  { id:'halfway',       name:'Halfway There',  desc:'Clear 10 campaign levels',                icon:'\u{1F56F}\uFE0F', check:function(){ return save.completedLevels.length>=10; } },
+  { id:'wick_master',   name:'Wick Master',    desc:'Clear all 20 campaign levels',             icon:'\u{1F3C6}',       check:function(){ return save.completedLevels.length>=20; } },
+  { id:'gold_rush',     name:'Gold Rush',      desc:'Light 10 gold wicks',                      icon:'\u{1F31F}',       check:function(){ return save.goldWicksLit>=10; } },
+  { id:'windswept',     name:'Windswept',      desc:'Survive 20 wind gusts',                    icon:'\u{1F4A8}',       check:function(){ return save.gustsSurvived>=20; } },
+  { id:'ember_dodger',  name:'Ember Dodger',   desc:'Clear 5 levels with embers active',         icon:'\u{1F525}',       check:function(){ return save.emberLevelsCleared>=5; } },
+  { id:'deep_diver',    name:'Deep Diver',     desc:'Reach depth 15 in Endless Soot Mode',       icon:'\u2693',          check:function(){ return save.bestEndlessDepth>=15; } },
+  { id:'marathoner',    name:'Marathoner',     desc:'Reach depth 30 in Endless Soot Mode',       icon:'\u{1F3C5}',       check:function(){ return save.bestEndlessDepth>=30; } },
+  { id:'speed_wax',     name:'Speed Wax',      desc:'Clear a level in under 15 seconds',         icon:'\u26A1',          check:function(){ return save.speedWaxAchieved; } },
+  { id:'architect',     name:'Architect',      desc:'Save a level in the Editor',                icon:'\u{1F4D0}',       check:function(){ return save.customLevels.length>0; } },
+  { id:'daily_devotee', name:'Daily Devotee',  desc:'Complete 5 daily challenges',               icon:'\u{1F4C5}',       check:function(){ return save.dailyCompletions>=5; } }
+];
+
+function checkAchievements(){
+  var newlyUnlocked = [];
+  ACHIEVEMENTS.forEach(function(a){
+    if (save.achievements.indexOf(a.id)===-1 && a.check()){
+      save.achievements.push(a.id);
+      newlyUnlocked.push(a);
+    }
+  });
+  if (newlyUnlocked.length){
+    persistSave();
+    showAchievementToast(newlyUnlocked);
+  }
+  return newlyUnlocked;
+}
+
+// Flame themes unlock silently in the background (isThemeUnlocked() just
+// becomes true once you hit the milestone); this is what actually announces
+// it the first time, so unlocking a color doesn't pass by unnoticed.
+function checkThemeUnlocks(){
+  var newly = [];
+  Object.keys(FLAME_THEMES).forEach(function(key){
+    if (key==='classic') return;
+    if (isThemeUnlocked(key) && save.unlockedThemesSeen.indexOf(key)===-1){
+      save.unlockedThemesSeen.push(key);
+      newly.push(FLAME_THEMES[key]);
+    }
+  });
+  if (newly.length){
+    persistSave();
+    setTimeout(function(){
+      showToast('New flame color unlocked: ' + newly.map(function(t){ return t.name; }).join(', '));
+    }, 2200);
+  }
+}
+
+function showAchievementToast(list){
+  var el = document.getElementById('introToast');
+  var a = list[0];
+  el.textContent = 'Achievement unlocked: ' + a.name;
+  el.classList.remove('hidden');
+  playGoldenShimmer();
+  setTimeout(function(){
+    if (list.length>1) showAchievementToast(list.slice(1));
+    else if (state.mode==='playing' && !state.introActive) el.classList.add('hidden');
+  }, 1800);
+}
+
+function buildAchievementsScreen(){
+  var wrap = document.getElementById('achievementsScroll');
+  wrap.innerHTML = '';
+  ACHIEVEMENTS.forEach(function(a){
+    var unlocked = save.achievements.indexOf(a.id)!==-1;
+    var row = document.createElement('div');
+    row.className = 'achRow' + (unlocked?' unlocked':'');
+    row.innerHTML =
+      '<span class="achIcon">'+(unlocked?a.icon:'\u{1F512}')+'</span>' +
+      '<div class="achText"><div class="achName">'+a.name+'</div><div class="achDesc">'+a.desc+'</div></div>';
+    wrap.appendChild(row);
+  });
+  var count = save.achievements.length;
+  document.getElementById('achProgress').textContent = count + ' / ' + ACHIEVEMENTS.length + ' unlocked';
+}
+
+// ===================================================================
+// ===== LEVEL LIFECYCLE =====
+// ===================================================================
+function isFirstLevelOfTier(cfg){
+  if (cfg.custom || cfg.daily) return false;
+  if (cfg.n <= 1) return true;
+  var prevTier = state.isEndless ? getEndlessConfig(cfg.n-1).tier : LEVELS[cfg.n-2].tier;
+  return prevTier !== cfg.tier;
+}
+
+function startLevel(levelNum){
+  state.isEndless = false; state.isTimeAttack = false; state.isDaily = false; state.isEditorPlaytest = false;
+  state.currentLevelNum = levelNum;
+  loadLevelFromConfig(getLevelConfig(levelNum), levelNum*104729);
+}
+
+function startEndless(freshRun){
+  state.isEndless = true; state.isTimeAttack = false; state.isDaily = false; state.isEditorPlaytest = false;
+  if (freshRun){
+    state.endlessDepth = 1;
+    state.endlessSeed = (Date.now() ^ Math.floor(Math.random()*0xFFFFFFFF)) >>> 0;
+    state.endlessWaxTotal = 0;
+  }
+  loadLevelFromConfig(getEndlessConfig(state.endlessDepth), (state.endlessSeed + state.endlessDepth*15485863) >>> 0);
+}
+
+function startTimeAttack(){
+  state.isEndless = false; state.isTimeAttack = true; state.isDaily = false; state.isEditorPlaytest = false;
+  state.timeAttackElapsedMs = 0;
+  state.timeAttackLevelNum = 1;
+  startTimeAttackLevel(1);
+}
+function startTimeAttackLevel(levelNum){
+  state.currentLevelNum = levelNum;
+  loadLevelFromConfig(getLevelConfig(levelNum), levelNum*104729 + 555);
+}
+
+function getTodayDateNum(){
+  var now = new Date();
+  return now.getFullYear()*10000 + (now.getMonth()+1)*100 + now.getDate();
+}
+function getDailyConfig(){
+  var dateNum = getTodayDateNum();
+  return {
+    n: dateNum, tier:'Daily', size:10, wicks:4, gold:true,
+    wind:{interval:6.5, double:false},
+    prewax:6, water:8, fog:null,
+    embers:{interval:8, warnMs:900, hazardMs:2200},
+    daily:true
+  };
+}
+function startDaily(){
+  state.isEndless = false; state.isTimeAttack = false; state.isDaily = true; state.isEditorPlaytest = false;
+  var cfg = getDailyConfig();
+  loadLevelFromConfig(cfg, (cfg.n*7919 + 42) >>> 0);
+}
+
+function assignWickOrder(grid, size, startPos){
+  var wicks = getAllWicks(grid, size);
+  wicks.sort(function(a,b){
+    var da = Math.abs(a.x-startPos.x)+Math.abs(a.y-startPos.y);
+    var db = Math.abs(b.x-startPos.x)+Math.abs(b.y-startPos.y);
+    return da-db;
+  });
+  wicks.forEach(function(w,i){ grid[w.y][w.x].order = i; });
+}
+
+function cloneGrid(grid, size){
+  var g = [];
+  for (var y=0;y<size;y++){
+    var row = [];
+    for (var x=0;x<size;x++) row.push(Object.assign({}, grid[y][x]));
+    g.push(row);
+  }
+  return g;
+}
+
+function applyLevelData(cfg, gen, seed){
+  state.level = cfg;
+  state.grid = gen.grid;
+  assignWickOrder(state.grid, cfg.size, gen.startPos);
+  state.player.x = gen.startPos.x;
+  state.player.y = gen.startPos.y;
+  state.player.heading = gen.startHeading;
+  state.player.stepCount = 0;
+  state.player.renderX = gen.startPos.x; state.player.renderY = gen.startPos.y;
+  state.player.velX = 0; state.player.velY = 0; state.player.inputPulse = 0;
+  resetLampTrail();
+  state.wicksLit = 0;
+  state.wicksTotal = cfg.wicks;
+  state.waxPlacedCount = 0;
+  state.anyWaxHardened = false;
+  state.gameClock = 0;
+  state.lastTickGameTime = 0;
+  state.tickInterval = SPEED_PRESETS[settings.speed] || SPEED_PRESETS.normal;
+  state.wind = { nextGustAt:null, telegraphShown:false, direction:0 };
+  state.ember = null;
+  state.emberNextAt = null;
+  state.buffs = { slowSetUntil:0, smokeScreenCharges:0, splinterCharges:0 };
+  state.rng = mulberry32(((seed||1)+31)>>>0);
+  state.deathReason = null;
+  state.reliefChoiceActive = false;
+  state.meltTargeting = false;
+  state.meltCallback = null;
+  state.orderedMode = !!settings.mod_orderedWicks;
+  state.nextWickOrder = 0;
+  state.fadingWicksMode = !!settings.mod_fadingWicks;
+  state.zenMode = !!settings.mod_zen;
+  state.undoAssistMode = !!settings.mod_undoAssist;
+  state.undoCharge = state.undoAssistMode ? 1 : 0;
+  state.undoSnapshot = null;
+  particles = [];
+
+  hideAllOverlays();
+  setMode('playing');
+  resizeCanvas();
+  updateHudForLevel();
+  updateUndoBtn();
+  startIntro(cfg);
+}
+
+function loadLevelFromConfig(cfg, seed){
+  var gen = generateLevel(cfg, seed);
+  applyLevelData(cfg, gen, seed);
+}
+
+function loadCustomLevel(customDef){
+  var cfg = {
+    n: customDef.name || 'Custom', tier:'Custom', size: customDef.size,
+    wicks: getAllWicks(customDef.grid, customDef.size).length,
+    gold:false, wind:null, prewax:0, water:0, fog:null, embers:null, custom:true
+  };
+  var gen = { grid: cloneGrid(customDef.grid, customDef.size), startPos: customDef.startPos, startHeading:0 };
+  state.isEndless=false; state.isTimeAttack=false; state.isDaily=false; state.isEditorPlaytest=true;
+  applyLevelData(cfg, gen, 1);
+}
+
+// ===================================================================
+// ===== LEVEL EDITOR =====
+// ===================================================================
+var editor = { size:9, grid:null, startPos:{x:4,y:4}, tool:'wall', editingId:null };
+
+function editorNewLevel(){
+  editor.size = 9;
+  editor.grid = createEmptyGrid(9);
+  editor.startPos = {x:4,y:4};
+  editor.editingId = null;
+  var nameInput = document.getElementById('editorNameInput');
+  if (nameInput) nameInput.value = '';
+  syncEditorSizeUI();
+}
+
+function openEditor(existingId){
+  var def = existingId ? save.customLevels.filter(function(c){ return c.id===existingId; })[0] : null;
+  if (def){
+    editor.size = def.size;
+    editor.grid = cloneGrid(def.grid, def.size);
+    editor.startPos = { x:def.startPos.x, y:def.startPos.y };
+    editor.editingId = existingId;
+    document.getElementById('editorNameInput').value = def.name || '';
+  } else {
+    editorNewLevel();
+  }
+  editor.tool = 'wall';
+  syncEditorToolUI();
+  syncEditorSizeUI();
+  buildEditorLoadList();
+  setMode('editor');
+  resizeCanvas();
+}
+
+function editorResize(newSize){
+  editor.size = newSize;
+  editor.grid = createEmptyGrid(newSize);
+  editor.startPos = { x:Math.floor(newSize/2), y:Math.floor(newSize/2) };
+  syncEditorSizeUI();
+  resizeCanvas();
+}
+
+function syncEditorSizeUI(){
+  var el = document.getElementById('editorSizeLabel');
+  if (el) el.textContent = editor.size+'\u00d7'+editor.size;
+}
+
+function syncEditorToolUI(){
+  var btns = document.querySelectorAll('#editorToolbar .segBtn');
+  for (var i=0;i<btns.length;i++){
+    btns[i].classList.toggle('active', btns[i].getAttribute('data-tool')===editor.tool);
+  }
+}
+
+function editorApplyToolAt(x,y){
+  if (!inBounds(x,y,editor.size)) return;
+  if (editor.tool==='start'){
+    if (editor.grid[y][x].type==='empty'){ editor.startPos={x:x,y:y}; playUiClick(); }
+    return;
+  }
+  if (x===editor.startPos.x && y===editor.startPos.y) return;
+  var tile = editor.grid[y][x];
+  if (editor.tool==='erase'){ tile.type='empty'; tile.isGold=false; }
+  else if (editor.tool==='wall'){ tile.type = (tile.type==='waxHard') ? 'empty' : 'waxHard'; }
+  else if (editor.tool==='water'){ tile.type = (tile.type==='water') ? 'empty' : 'water'; }
+  else if (editor.tool==='wick'){ tile.type = (tile.type==='wick' && !tile.isGold) ? 'empty' : 'wick'; tile.isGold=false; }
+  else if (editor.tool==='goldWick'){
+    if (tile.type==='wick' && tile.isGold){ tile.isGold=false; }
+    else {
+      for (var yy=0;yy<editor.size;yy++) for (var xx=0;xx<editor.size;xx++) editor.grid[yy][xx].isGold=false;
+      tile.type='wick'; tile.isGold=true;
+    }
+  }
+  playUiClick();
+}
+
+function showEditorMessage(msg){
+  var el = document.getElementById('introToast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(function(){ if (state.mode==='editor') el.classList.add('hidden'); }, 1700);
+}
+
+function saveEditorLevel(){
+  var wicks = getAllWicks(editor.grid, editor.size);
+  if (wicks.length < 1){ showEditorMessage('Add at least one wick first'); return; }
+  if (!isFullyConnected(editor.grid, editor.size, editor.startPos, wicks)){ showEditorMessage('Some wicks are sealed off \u2014 check your walls'); return; }
+  var nameInput = document.getElementById('editorNameInput');
+  var name = (nameInput.value||'').trim() || 'Untitled';
+  var def = {
+    id: editor.editingId || ('custom_'+Date.now()),
+    name: name, size: editor.size,
+    grid: cloneGrid(editor.grid, editor.size),
+    startPos: { x:editor.startPos.x, y:editor.startPos.y },
+    createdAt: Date.now()
+  };
+  if (editor.editingId){
+    var idx = -1;
+    for (var i=0;i<save.customLevels.length;i++) if (save.customLevels[i].id===editor.editingId) idx=i;
+    if (idx!==-1) save.customLevels[idx] = def;
+  } else {
+    if (save.customLevels.length>=8){ showEditorMessage('Max 8 saved levels \u2014 delete one first'); return; }
+    save.customLevels.push(def);
+    editor.editingId = def.id;
+  }
+  persistSave();
+  checkAchievements();
+  checkThemeUnlocks();
+  showEditorMessage('Saved');
+  buildEditorLoadList();
+}
+
+function deleteCustomLevel(id){
+  if (!window.confirm('Delete this level? This cannot be undone.')) return;
+  save.customLevels = save.customLevels.filter(function(c){ return c.id!==id; });
+  persistSave();
+  if (editor.editingId===id) editorNewLevel();
+  buildEditorLoadList();
+}
+
+function buildEditorLoadList(){
+  var wrap = document.getElementById('editorLoadList');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  if (!save.customLevels.length){
+    wrap.innerHTML = '<div class="panelSub" style="margin:6px 0;">No saved levels yet.</div>';
+    return;
+  }
+  save.customLevels.forEach(function(def){
+    var row = document.createElement('div');
+    row.className = 'customRow';
+    row.innerHTML =
+      '<span class="customName">'+def.name+'</span>' +
+      '<button class="btn small ghost" data-act="edit">Edit</button>' +
+      '<button class="btn small ghost" data-act="play">Play</button>' +
+      '<button class="btn small ghost danger-ghost" data-act="del">Delete</button>';
+    row.querySelector('[data-act="edit"]').addEventListener('click', function(){ openEditor(def.id); });
+    row.querySelector('[data-act="play"]').addEventListener('click', function(){ loadCustomLevel(def); });
+    row.querySelector('[data-act="del"]').addEventListener('click', function(){ deleteCustomLevel(def.id); });
+    wrap.appendChild(row);
+  });
+}
+
+function playtestFromEditor(){
+  var wicks = getAllWicks(editor.grid, editor.size);
+  if (wicks.length < 1){ showEditorMessage('Add at least one wick first'); return; }
+  if (!isFullyConnected(editor.grid, editor.size, editor.startPos, wicks)){ showEditorMessage('Some wicks are sealed off \u2014 check your walls'); return; }
+  var nameInput = document.getElementById('editorNameInput');
+  loadCustomLevel({ name: (nameInput.value||'Playtest'), size: editor.size, grid: editor.grid, startPos: editor.startPos });
+}
+
+function returnToEditor(){
+  setMode('editor');
+  resizeCanvas();
+}
+
+function renderEditor(ts){
+  if (!canvas) return;
+  ctx.clearRect(0,0,boardCssSize,boardCssSize);
+  ctx.fillStyle = '#251c14';
+  ctx.fillRect(0,0,boardCssSize,boardCssSize);
+  for (var y=0;y<editor.size;y++){
+    for (var x=0;x<editor.size;x++){
+      drawTile(x,y,editor.grid[y][x],ts);
+    }
+  }
+  var p = gridToPixel(editor.startPos.x, editor.startPos.y);
+  drawLamp(p.x+tileSize/2, p.y+tileSize/2, tileSize*0.3, ts, 0, false);
+}
+
+function startIntro(cfg){
+  state.introActive = true;
+  state.simPaused = true;
+  state.introStartTs = performance.now();
+  state.introDuration = cfg.fog ? 2600 : 1100;
+  var el = document.getElementById('introToast');
+  if (state.isDaily){
+    el.textContent = "Today's Challenge";
+  } else if (cfg.custom){
+    el.textContent = 'Playtest';
+  } else if (state.isTimeAttack){
+    el.textContent = 'Level ' + cfg.n + ' of 20';
+  } else if (isFirstLevelOfTier(cfg) && TIER_INFO[cfg.tier]){
+    el.textContent = TIER_INFO[cfg.tier].toast;
+  } else {
+    el.textContent = (state.isEndless ? 'Depth ' : 'Level ') + cfg.n;
+  }
+  el.classList.remove('hidden');
+}
+
+function endIntro(){
+  state.introActive = false;
+  state.simPaused = false;
+  document.getElementById('introToast').classList.add('hidden');
+}
+
+// ===================================================================
+// ===== TICK / EVENT PROCESSING =====
+// ===================================================================
+function zenBounce(x,y){
+  playBonkSound();
+  spawnParticles(x, y, COL.telegraph, 6, {life:0.35,speed:0.6});
+  hapticPulse(15);
+}
+
+function handleTick(){
+  var oldX = state.player.x, oldY = state.player.y, oldHeading = state.player.heading, oldStepCount = state.player.stepCount;
+  var res = attemptMove(state, state.grid, state.level.size);
+  if (res.result === 'death'){
+    if (state.zenMode){ zenBounce(oldX, oldY); return; }
+    triggerGameOver(res.reason);
+    return;
+  }
+
+  if (state.undoAssistMode){
+    var hasWickLit = res.events.some(function(e){ return e.type==='wickLit'; });
+    if (!hasWickLit){
+      var dripEv = res.events.filter(function(e){ return e.type==='waxDripped'; })[0];
+      state.undoSnapshot = { x:oldX, y:oldY, heading:oldHeading, stepCount:oldStepCount, drip: dripEv?{x:dripEv.x,y:dripEv.y}:null };
+    } else {
+      state.undoSnapshot = null;
+    }
+    updateUndoBtn();
+  }
+
+  processMoveEvents(res.events);
+}
+
+function performUndo(){
+  if (!state.undoAssistMode || state.undoCharge<=0 || !state.undoSnapshot) return false;
+  var snap = state.undoSnapshot;
+  state.player.x = snap.x; state.player.y = snap.y;
+  state.player.heading = snap.heading; state.player.stepCount = snap.stepCount;
+  if (snap.drip){
+    var t = state.grid[snap.drip.y][snap.drip.x];
+    t.type='empty'; t.hardenAt=null; t.wetSince=null; t.permanentlyWet=false;
+    state.waxPlacedCount = Math.max(0, state.waxPlacedCount-1);
+  }
+  state.undoCharge--;
+  state.undoSnapshot = null;
+  state.player.renderX = state.player.x; state.player.renderY = state.player.y;
+  state.player.velX = 0; state.player.velY = 0;
+  resetLampTrail();
+  playUndoSound();
+  updateUndoBtn();
+  return true;
+}
+
+function processMoveEvents(events){
+  var pendingGold = false;
+  for (var i=0;i<events.length;i++){
+    var ev = events[i];
+    if (ev.type==='wickLit'){
+      state.wicksLit++;
+      playWickChime(state.wicksLit-1);
+      spawnParticles(ev.x, ev.y, ev.gold?COL.gold:COL.flameAmber, ev.gold?14:8, {life:0.7,speed:1.1,rise:0.5,gravity:0.7});
+      var hardened = chainWaxNear(state.grid, state.level.size, ev.x, ev.y);
+      if (hardened.length){
+        playChainWaxSound();
+        hardened.forEach(function(h){ spawnParticles(h.x,h.y,COL.waxHardShadow,5,{life:0.4,speed:0.6}); });
+      }
+      updateHudWicks();
+      hapticPulse(12);
+      if (ev.gold){ pendingGold = true; save.goldWicksLit++; }
+    }
+  }
+  if (pendingGold) openReliefChoice(checkLevelCompletion);
+  else checkLevelCompletion();
+}
+
+function checkLevelCompletion(){
+  if (state.wicksLit >= state.wicksTotal) triggerLevelComplete();
+}
+
+function updateSim(dt){
+  var hardenEvents = updateWaxHardening(state.grid, state.level.size, state.gameClock);
+  for (var i=0;i<hardenEvents.length;i++){ playHardenTick(); state.anyWaxHardened = true; }
+
+  var fadeEvents = updateWickFading(state, state.grid, state.level.size, state.gameClock);
+  for (var g=0; g<fadeEvents.length; g++){
+    state.wicksLit = Math.max(0, state.wicksLit-1);
+    if (state.orderedMode) state.nextWickOrder = Math.min(state.nextWickOrder, fadeEvents[g].order);
+    updateHudWicks();
+    playWickFadeSound();
+  }
+
+  var windEvents = updateWind(state, state.grid, state.level.size, state.rng);
+  for (var j=0;j<windEvents.length;j++){
+    var ev = windEvents[j];
+    if (ev.type==='telegraph') playWindTelegraph();
+    if (ev.type==='gust'){
+      playWindGust();
+      if (ev.result.result==='death'){
+        if (state.zenMode){ zenBounce(state.player.x, state.player.y); }
+        else { triggerGameOver(ev.result.reason); return; }
+      } else if (ev.result.result==='ok'){
+        save.gustsSurvived++;
+        spawnParticles(state.player.x, state.player.y, COL.telegraph, 8, {life:0.4,speed:1.3,gravity:0.2});
+        processMoveEvents(ev.result.events);
+      } else if (ev.result.result==='blocked'){
+        save.gustsSurvived++;
+      }
+    }
+  }
+  if (state.simPaused){ updateBuffTray(); return; }
+
+  var emberEvents = updateEmbers(state, state.grid, state.level.size, state.rng);
+  for (var k=0;k<emberEvents.length;k++){
+    var eev = emberEvents[k];
+    if (eev.type==='emberWarn') playEmberWarn();
+    else if (eev.type==='emberHot'){ playEmberIgnite(); spawnParticles(eev.x,eev.y,COL.flameEmber,6,{life:0.5,speed:0.8,rise:0.3,gravity:0.5}); }
+    else if (eev.type==='emberFade') spawnParticles(eev.x,eev.y,COL.waxHardShadow,4,{life:0.4,speed:0.4});
+    else if (eev.type==='emberCaught'){
+      if (state.zenMode){ zenBounce(state.player.x, state.player.y); }
+      else { triggerGameOver('ember'); return; }
+    }
+  }
+  if (state.simPaused){ updateBuffTray(); return; }
+
+  var ticksThisFrame = 0;
+  while (!state.simPaused && state.gameClock - state.lastTickGameTime >= state.tickInterval && ticksThisFrame < 5){
+    state.lastTickGameTime += state.tickInterval;
+    handleTick();
+    ticksThisFrame++;
+  }
+  updateBuffTray();
+}
+
+// ===================================================================
+// ===== RELIEF ITEMS =====
+// ===================================================================
+function openReliefChoice(onClose){
+  state.simPaused = true;
+  state.reliefChoiceActive = true;
+  var options = getAvailableReliefOptions(state.grid, state.level.size);
+  var container = document.getElementById('reliefOptions');
+  container.innerHTML = '';
+  options.forEach(function(key){
+    var meta = RELIEF_META[key];
+    var card = document.createElement('div');
+    card.className = 'reliefCard';
+    card.innerHTML = '<span class="reliefIcon">'+meta.icon+'</span>' +
+      '<div class="reliefName">'+meta.name+'</div>' +
+      '<div class="reliefDesc">'+meta.desc+'</div>';
+    card.addEventListener('click', function(){ chooseRelief(key, onClose); });
+    container.appendChild(card);
+  });
+  document.getElementById('overlayRelief').classList.remove('hidden');
+}
+
+function chooseRelief(choice, onClose){
+  document.getElementById('overlayRelief').classList.add('hidden');
+  state.reliefChoiceActive = false;
+  playGoldenShimmer();
+  if (choice==='melt'){
+    enterMeltTargeting(function(){ finishRelief(onClose); });
+  } else {
+    applyReliefEffect(state, choice);
+    updateBuffTray();
+    finishRelief(onClose);
+  }
+}
+
+function finishRelief(onClose){
+  state.simPaused = false;
+  if (onClose) onClose();
+}
+
+function enterMeltTargeting(callback){
+  state.meltTargeting = true;
+  state.meltCallback = callback;
+  document.getElementById('meltBanner').classList.remove('hidden');
+}
+function hideMeltBanner(){ document.getElementById('meltBanner').classList.add('hidden'); }
+
+function updateBuffTray(){
+  var tray = document.getElementById('buffTray');
+  var chips = [];
+  if (state.zenMode) chips.push('<div class="buffChip modChip"><span class="buffIcon">\u{1F54A}\uFE0F</span>Zen</div>');
+  if (state.orderedMode) chips.push('<div class="buffChip modChip"><span class="buffIcon">\u{1F522}</span>Ordered</div>');
+  if (state.fadingWicksMode) chips.push('<div class="buffChip modChip"><span class="buffIcon">\u{1F56F}\uFE0F</span>Fading</div>');
+  if (state.undoAssistMode) chips.push('<div class="buffChip modChip"><span class="buffIcon">\u21B6</span>Undo <span class="buffCount">x'+state.undoCharge+'</span></div>');
+  if (state.gameClock < state.buffs.slowSetUntil) chips.push('<div class="buffChip"><span class="buffIcon">\u23F3</span>Slow Set</div>');
+  if (state.buffs.smokeScreenCharges>0) chips.push('<div class="buffChip"><span class="buffIcon">\u{1F32C}\uFE0F</span>Smoke <span class="buffCount">x'+state.buffs.smokeScreenCharges+'</span></div>');
+  if (state.buffs.splinterCharges>0) chips.push('<div class="buffChip"><span class="buffIcon">\u2728</span>Splinter <span class="buffCount">x'+state.buffs.splinterCharges+'</span></div>');
+  tray.innerHTML = chips.join('');
+  tray.classList.toggle('visible', chips.length>0);
+}
+
+// ===================================================================
+// ===== LEVEL COMPLETE / GAME OVER =====
+// ===================================================================
+function hapticPulse(ms){
+  try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e){ /* unsupported - silently skip */ }
+}
+
+function triggerLevelComplete(){
+  state.simPaused = true;
+  playLevelCompleteFanfare();
+  hapticPulse([10,40,10]);
+
+  var timeTakenMs = state.gameClock;
+  var waxCount = state.waxPlacedCount;
+  if (state.level.embers) save.emberLevelsCleared++;
+  if (timeTakenMs < 15000) save.speedWaxAchieved = true;
+
+  if (state.isEditorPlaytest){
+    setTimeout(function(){ showEditorPlaytestComplete(timeTakenMs, waxCount); }, 350);
+    return;
+  }
+  if (state.isDaily){
+    var todayNum = getTodayDateNum();
+    var isNewDay = !save.dailyBest || save.dailyBest.dateNum !== todayNum;
+    if (isNewDay || timeTakenMs < save.dailyBest.timeMs){
+      save.dailyBest = { dateNum: todayNum, timeMs: timeTakenMs, waxCount: waxCount };
+      if (isNewDay) save.dailyCompletions++;
+    }
+    persistSave();
+    checkAchievements();
+    checkThemeUnlocks();
+    setTimeout(function(){ showDailyCompleteOverlay(timeTakenMs, waxCount, isNewDay); }, 350);
+    return;
+  }
+  if (state.isTimeAttack){
+    state.timeAttackElapsedMs += timeTakenMs;
+    if (state.timeAttackLevelNum >= 20){
+      var isNewBest = !save.bestTimeAttackMs || state.timeAttackElapsedMs < save.bestTimeAttackMs;
+      if (isNewBest) save.bestTimeAttackMs = state.timeAttackElapsedMs;
+      persistSave();
+      checkAchievements();
+      checkThemeUnlocks();
+      setTimeout(function(){ showTimeAttackCompleteOverlay(state.timeAttackElapsedMs, isNewBest); }, 350);
+    } else {
+      var nextLvl = state.timeAttackLevelNum + 1;
+      var toastElTA = document.getElementById('introToast');
+      toastElTA.textContent = 'Level ' + state.timeAttackLevelNum + ' cleared';
+      toastElTA.classList.remove('hidden');
+      state.timeAttackLevelNum = nextLvl;
+      setTimeout(function(){ startTimeAttackLevel(nextLvl); }, 500);
+    }
+    return;
+  }
+
+  if (!state.isEndless){
+    var n = state.currentLevelNum;
+    if (save.completedLevels.indexOf(n)===-1) save.completedLevels.push(n);
+    if (n+1 > save.unlockedLevel && n < 20) save.unlockedLevel = n+1;
+    if (!save.levelBests[n]) save.levelBests[n] = { timeMs: Infinity, waxCount: Infinity };
+    var rec = save.levelBests[n];
+    var newBestTime = timeTakenMs < rec.timeMs;
+    var newBestWax = waxCount < rec.waxCount;
+    if (newBestTime) rec.timeMs = timeTakenMs;
+    if (newBestWax) rec.waxCount = waxCount;
+    var isFlawless = !state.anyWaxHardened;
+    if (isFlawless && save.flawlessLevels.indexOf(n)===-1) save.flawlessLevels.push(n);
+    persistSave();
+    checkAchievements();
+    checkThemeUnlocks();
+    setTimeout(function(){
+      showLevelCompleteOverlay(timeTakenMs, waxCount, { newBestTime:newBestTime, newBestWax:newBestWax, isFlawless:isFlawless, bestTimeMs:rec.timeMs });
+    }, 350);
+  } else {
+    var clearedDepth = state.endlessDepth;
+    state.endlessWaxTotal += state.waxPlacedCount;
+    var toastEl = document.getElementById('introToast');
+    toastEl.textContent = 'Depth ' + clearedDepth + ' cleared';
+    toastEl.classList.remove('hidden');
+    state.endlessDepth++;
+    persistSave();
+    setTimeout(function(){ startEndless(false); }, 950);
+  }
+}
+
+// ===================================================================
+// ===== SHARE & CHALLENGE LINKS =====
+// ===================================================================
+function downloadCanvasFallback(){
+  try {
+    var link = document.createElement('a');
+    link.download = 'waxlock-level-'+state.currentLevelNum+'.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch(e){ /* export blocked in this environment; ignore */ }
+}
+function shareMazeScreenshot(){
+  var caption = 'My maze from Waxlock Level ' + state.currentLevelNum +
+    (state.lastCompleteTimeMs ? (' \u2014 ' + Math.round(state.lastCompleteTimeMs/1000) + 's') : '');
+  try {
+    canvas.toBlob(function(blob){
+      if (!blob){ downloadCanvasFallback(); return; }
+      try {
+        var file = new File([blob], 'waxlock-level-'+state.currentLevelNum+'.png', {type:'image/png'});
+        if (navigator.canShare && navigator.canShare({files:[file]})){
+          navigator.share({ files:[file], title:'Waxlock', text:caption }).catch(function(){});
+          return;
+        }
+      } catch(e){ /* File/share construction unsupported here */ }
+      downloadCanvasFallback();
+    });
+  } catch(e){ downloadCanvasFallback(); }
+}
+
+function buildChallengeUrl(levelNum, timeMs){
+  var base = location.origin + location.pathname;
+  return base + '?level=' + levelNum + '&challenge=' + Math.round(timeMs);
+}
+function shareChallengeLink(){
+  var levelNum = state.currentLevelNum;
+  var timeMs = state.lastCompleteTimeMs || 0;
+  var url = buildChallengeUrl(levelNum, timeMs);
+  var text = 'I cleared Level ' + levelNum + ' in ' + (timeMs/1000).toFixed(1) + 's in Waxlock \u2014 beat my time!';
+  if (navigator.share){
+    navigator.share({ title:'Waxlock Challenge', text:text, url:url }).catch(function(){});
+  } else if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text+' '+url).then(function(){ showToast('Challenge link copied!'); }).catch(function(){ window.prompt('Copy this link to challenge a friend:', url); });
+  } else {
+    window.prompt('Copy this link to challenge a friend:', url);
+  }
+}
+
+function showToast(msg, ms){
+  var el = document.getElementById('introToast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(function(){ el.classList.add('hidden'); }, ms||1500);
+}
+
+function checkIncomingChallenge(){
+  try {
+    var params = new URLSearchParams(location.search);
+    var lvl = parseInt(params.get('level'),10);
+    var challengeMs = parseInt(params.get('challenge'),10);
+    if (lvl>=1 && lvl<=20 && challengeMs>0){
+      state.incomingChallenge = { level:lvl, timeMs:challengeMs };
+      document.getElementById('challengeText').textContent =
+        "Friend's challenge: beat " + (challengeMs/1000).toFixed(1) + 's on Level ' + lvl;
+      document.getElementById('challengeBanner').classList.remove('hidden');
+    }
+  } catch(e){ /* URLSearchParams unsupported or params malformed - ignore */ }
+}
+
+function showLevelCompleteOverlay(timeTakenMs, waxCount, badges){
+  state.lastCompleteTimeMs = timeTakenMs;
+  var statsEl = document.getElementById('completeStats');
+  statsEl.innerHTML =
+    '<div class="statItem"><div class="statVal">'+waxCount+'</div><div class="statLabel">Wax Tiles</div></div>' +
+    '<div class="statItem"><div class="statVal">'+Math.round(timeTakenMs/1000)+'s</div><div class="statLabel">Time</div></div>';
+  var badgeBits = [];
+  if (badges.isFlawless) badgeBits.push('<div class="bestBadge">Flawless</div>');
+  if (badges.newBestTime) badgeBits.push('<div class="bestBadge">New Best Time</div>');
+  if (badges.newBestWax) badgeBits.push('<div class="bestBadge">New Best Efficiency</div>');
+  if (!badgeBits.length && isFinite(badges.bestTimeMs)) badgeBits.push('<div class="bestBadge">Best: '+Math.round(badges.bestTimeMs/1000)+'s</div>');
+  document.getElementById('completeBadges').innerHTML = badgeBits.join('');
+  var nextBtn = document.getElementById('btnNextLevel');
+  if (state.currentLevelNum >= 20){
+    nextBtn.textContent = 'Level Select';
+    nextBtn.onclick = function(){ closeOverlay('overlayLevelComplete'); showLevelSelectScreen(); };
+  } else {
+    nextBtn.textContent = 'Next Level';
+    nextBtn.onclick = function(){ closeOverlay('overlayLevelComplete'); startLevel(state.currentLevelNum+1); };
+  }
+  document.getElementById('overlayLevelComplete').classList.remove('hidden');
+}
+
+function showTimeAttackCompleteOverlay(elapsedMs, isNewBest){
+  document.getElementById('taStats').innerHTML =
+    '<div class="statItem"><div class="statVal">'+(elapsedMs/1000).toFixed(1)+'s</div><div class="statLabel">Total Time</div></div>';
+  document.getElementById('taBadges').innerHTML = isNewBest ? '<div class="bestBadge">New Best</div>' :
+    (isFinite(save.bestTimeAttackMs) && save.bestTimeAttackMs ? '<div class="bestBadge">Best: '+(save.bestTimeAttackMs/1000).toFixed(1)+'s</div>' : '');
+  document.getElementById('overlayTimeAttackComplete').classList.remove('hidden');
+}
+
+function showDailyCompleteOverlay(timeMs, waxCount, isNewDay){
+  document.getElementById('dailyStats').innerHTML =
+    '<div class="statItem"><div class="statVal">'+waxCount+'</div><div class="statLabel">Wax Tiles</div></div>' +
+    '<div class="statItem"><div class="statVal">'+Math.round(timeMs/1000)+'s</div><div class="statLabel">Time</div></div>';
+  document.getElementById('dailyBadges').innerHTML = isNewDay ? '<div class="bestBadge">Today\'s Result</div>' : '<div class="bestBadge">Improved Today\'s Time</div>';
+  document.getElementById('overlayDailyComplete').classList.remove('hidden');
+}
+
+function showEditorPlaytestComplete(timeMs, waxCount){
+  var el = document.getElementById('introToast');
+  el.textContent = 'Playtest cleared in ' + Math.round(timeMs/1000) + 's, ' + waxCount + ' wax tiles';
+  el.classList.remove('hidden');
+  setTimeout(function(){ el.classList.add('hidden'); returnToEditor(); }, 1800);
+}
+function showEditorPlaytestDeath(reason){
+  var el = document.getElementById('introToast');
+  var lines = DEATH_LINES[reason] || DEATH_LINES.wax;
+  el.textContent = lines[0] + ' \u2014 back to editor';
+  el.classList.remove('hidden');
+  setTimeout(function(){ el.classList.add('hidden'); returnToEditor(); }, 1600);
+}
+
+function triggerGameOver(reason){
+  state.simPaused = true;
+  state.deathReason = reason;
+  playDeathSound();
+  hapticPulse(40);
+  spawnParticles(state.player.x, state.player.y, COL.flameEmber, 16, {life:0.9,speed:1.7,rise:0.3,gravity:0.4});
+
+  if (state.isTimeAttack){
+    setTimeout(function(){
+      var toastEl = document.getElementById('introToast');
+      toastEl.textContent = 'Snuffed \u2014 retrying Level ' + state.timeAttackLevelNum;
+      toastEl.classList.remove('hidden');
+      setTimeout(function(){ startTimeAttackLevel(state.timeAttackLevelNum); }, 500);
+    }, 400);
+    return;
+  }
+  if (state.isEditorPlaytest){
+    setTimeout(function(){ showEditorPlaytestDeath(reason); }, 550);
+    return;
+  }
+  setTimeout(function(){ showGameOverOverlay(reason); }, 550);
+}
+
+// Commits the current Endless run's depth/score as a best if it qualifies.
+// Called on death (via showGameOverOverlay) AND on voluntarily leaving an
+// active run (quitting to menu or level select) - reaching a depth should
+// count whether you died there or simply decided to stop.
+function commitEndlessProgress(){
+  if (!state.isEndless) return null;
+  var depthReached = state.endlessDepth;
+  var newBest = depthReached > save.bestEndlessDepth;
+  if (newBest) save.bestEndlessDepth = depthReached;
+  var score = Math.max(0, depthReached*1000 - Math.min(900, state.endlessWaxTotal));
+  if (score > save.bestEndlessScore) save.bestEndlessScore = score;
+  persistSave();
+  checkAchievements();
+  checkThemeUnlocks();
+  return { depthReached:depthReached, score:score, newBest:newBest };
+}
+
+function showGameOverOverlay(reason){
+  var lines = DEATH_LINES[reason] || DEATH_LINES.wax;
+  document.getElementById('deathReasonText').textContent = lines[Math.floor(Math.random()*lines.length)];
+  var endlessStatsEl = document.getElementById('endlessStats');
+  if (state.isEndless){
+    var result = commitEndlessProgress();
+    endlessStatsEl.classList.remove('hidden');
+    endlessStatsEl.innerHTML =
+      '<div class="statItem"><div class="statVal">'+result.depthReached+'</div><div class="statLabel">Depth Reached</div></div>' +
+      '<div class="statItem"><div class="statVal">'+result.score+'</div><div class="statLabel">Score</div></div>' +
+      (result.newBest ? '<div class="bestBadge">New Best</div>' : '');
+  } else {
+    endlessStatsEl.classList.add('hidden');
+    endlessStatsEl.innerHTML = '';
+  }
+  document.getElementById('overlayGameOver').classList.remove('hidden');
+}
+
+// ===================================================================
+// ===== SCREENS & HUD =====
+// ===================================================================
+function screenIdForMode(mode){
+  var map = { menu:'screenMenu', levelSelect:'screenLevelSelect', howTo:'screenHowTo', settings:'screenSettings', achievements:'screenAchievements' };
+  return map[mode] || null;
+}
+function setMode(mode){
+  state.mode = mode;
+  var target = screenIdForMode(mode);
+  ['screenMenu','screenLevelSelect','screenHowTo','screenSettings','screenAchievements'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', id !== target);
+  });
+  var isPlaying = (mode==='playing');
+  var isEditor = (mode==='editor');
+  document.getElementById('hud').classList.toggle('visible', isPlaying);
+  document.getElementById('tapHint').classList.toggle('visible', isPlaying || isEditor);
+  document.getElementById('tapHint').textContent = isEditor ? 'tap a tile to place the selected tool' : 'tap, arrow keys, or WASD to move';
+  document.getElementById('editorToolbar').classList.toggle('visible', isEditor);
+  if (!isPlaying) document.getElementById('buffTray').classList.remove('visible');
+  if (mode==='menu') updateMenuBests();
+  if (mode==='achievements') buildAchievementsScreen();
+}
+
+function showMainMenu(){ setMode('menu'); }
+function updateMenuBests(){
+  var sub = document.getElementById('endlessBestSub');
+  if (save.bestEndlessDepth > 0){
+    sub.textContent = 'Best: Depth ' + save.bestEndlessDepth + ' \u00b7 Score ' + save.bestEndlessScore;
+  } else {
+    sub.textContent = '';
+  }
+  var dailySub = document.getElementById('dailyBestSub');
+  var todayNum = getTodayDateNum();
+  if (save.dailyBest && save.dailyBest.dateNum===todayNum){
+    dailySub.textContent = "Today: " + Math.round(save.dailyBest.timeMs/1000) + 's';
+  } else {
+    dailySub.textContent = 'New puzzle today';
+  }
+  var taSub = document.getElementById('taBestSub');
+  taSub.textContent = (isFinite(save.bestTimeAttackMs) && save.bestTimeAttackMs) ? ('Best: '+(save.bestTimeAttackMs/1000).toFixed(1)+'s') : '';
+}
+function showLevelSelectScreen(){ buildLevelSelectScreen(); setMode('levelSelect'); }
+
+var cameFromPause = false;
+function openSettingsFrom(source){
+  cameFromPause = (source==='pause');
+  if (source==='pause') closeOverlay('overlayPause');
+  syncSettingsUI();
+  setMode('settings');
+}
+function openHowToFrom(source){
+  cameFromPause = (source==='pause');
+  if (source==='pause') closeOverlay('overlayPause');
+  setMode('howTo');
+}
+function closeSettingsOrHowTo(){
+  if (cameFromPause){
+    setMode('playing');
+    document.getElementById('overlayPause').classList.remove('hidden');
+  } else {
+    setMode('menu');
+  }
+}
+
+function closeOverlay(id){ document.getElementById(id).classList.add('hidden'); }
+function hideAllOverlays(){
+  ['overlayPause','overlayRelief','overlayLevelComplete','overlayGameOver','overlayTimeAttackComplete','overlayDailyComplete'].forEach(closeOverlay);
+  hideMeltBanner();
+}
+
+function openPauseMenu(){
+  state.simPaused = true;
+  document.getElementById('overlayPause').classList.remove('hidden');
+}
+function closePauseMenu(){
+  document.getElementById('overlayPause').classList.add('hidden');
+  state.simPaused = false;
+  audioResume();
+}
+
+function updateMuteBtn(){
+  var btn = document.getElementById('muteBtn');
+  btn.innerHTML = settings.muted ? '&#128263;' : '&#128266;';
+  btn.classList.toggle('isMuted', settings.muted);
+}
+
+function updateUndoBtn(){
+  var btn = document.getElementById('undoBtn');
+  if (!btn) return;
+  var show = state.undoAssistMode && state.undoCharge>0 && !!state.undoSnapshot;
+  btn.classList.toggle('hidden', !show);
+}
+
+function updateHudForLevel(){
+  document.getElementById('hudTier').textContent = state.level.tier;
+  var label;
+  if (state.isDaily) label = 'Daily Challenge';
+  else if (state.level.custom) label = 'Custom Level';
+  else if (state.isTimeAttack) label = 'Level ' + state.level.n + '/20';
+  else label = (state.isEndless?'Depth ':'Level ') + state.level.n;
+  document.getElementById('hudLevelLabel').textContent = label;
+  updateHudWicks();
+  updateBuffTray();
+}
+function updateHudWicks(){
+  var wrap = document.getElementById('hudWickIcons');
+  wrap.innerHTML = '';
+  var wicks = getAllWicks(state.grid, state.level.size);
+  for (var i=0;i<wicks.length;i++){
+    var w = wicks[i];
+    var tile = state.grid[w.y][w.x];
+    var dot = document.createElement('div');
+    dot.className = 'wickDot' + (tile.lit?' lit':'') + (tile.isGold?' gold':'');
+    wrap.appendChild(dot);
+  }
+}
+
+function buildLevelSelectScreen(){
+  var scroll = document.getElementById('levelSelectScroll');
+  scroll.innerHTML = '';
+  TIER_ORDER.forEach(function(tierName){
+    var levelsInTier = LEVELS.filter(function(l){ return l.tier===tierName; });
+    var block = document.createElement('div');
+    block.className = 'tierBlock';
+    var header = document.createElement('div');
+    header.className = 'tierHeader';
+    header.innerHTML = '<span class="tierName">'+tierName+'</span><span class="tierDesc">'+TIER_INFO[tierName].desc+'</span>';
+    block.appendChild(header);
+    var row = document.createElement('div');
+    row.className = 'levelRow';
+    levelsInTier.forEach(function(l){
+      var locked = l.n > save.unlockedLevel;
+      var done = save.completedLevels.indexOf(l.n) !== -1;
+      var btn = document.createElement('button');
+      btn.className = 'levelBtn' + (locked?' locked':'') + (done?' done':'') + (l.gold?' gold':'');
+      btn.innerHTML = locked ? '<span class="lockIcon">&#128274;</span>' : String(l.n);
+      if (!locked){
+        btn.addEventListener('click', (function(levelNum){
+          return function(){ playUiClick(); startLevel(levelNum); };
+        })(l.n));
+      }
+      row.appendChild(btn);
+    });
+    block.appendChild(row);
+    scroll.appendChild(block);
+  });
+}
+
+function syncSettingsUI(){
+  document.getElementById('toggleMusic').classList.toggle('on', settings.music);
+  document.getElementById('toggleSfx').classList.toggle('on', settings.sfx);
+  document.getElementById('toggleReducedMotion').classList.toggle('on', settings.reducedMotion);
+  document.getElementById('toggleColorblind').classList.toggle('on', settings.colorblindPalette);
+  document.getElementById('toggleLargeTargets').classList.toggle('on', settings.largeTapTargets);
+  document.getElementById('toggleFadingWicks').classList.toggle('on', settings.mod_fadingWicks);
+  document.getElementById('toggleOrderedWicks').classList.toggle('on', settings.mod_orderedWicks);
+  document.getElementById('toggleZen').classList.toggle('on', settings.mod_zen);
+  document.getElementById('toggleUndoAssist').classList.toggle('on', settings.mod_undoAssist);
+  var segBtns = document.querySelectorAll('#speedGroup .segBtn');
+  for (var i=0;i<segBtns.length;i++){
+    segBtns[i].classList.toggle('active', segBtns[i].getAttribute('data-speed')===settings.speed);
+  }
+  buildThemeSelector();
+}
+
+function buildThemeSelector(){
+  var wrap = document.getElementById('themeGroup');
+  wrap.innerHTML = '';
+  Object.keys(FLAME_THEMES).forEach(function(key){
+    var t = FLAME_THEMES[key];
+    var unlocked = isThemeUnlocked(key);
+    var btn = document.createElement('button');
+    btn.className = 'segBtn' + (settings.flameTheme===key ? ' active' : '');
+    btn.textContent = unlocked ? t.name : (t.name + ' \u{1F512}');
+    if (!unlocked) btn.setAttribute('disabled','');
+    else btn.addEventListener('click', function(){
+      settings.flameTheme = key;
+      applyFlameTheme(key);
+      buildThemeSelector();
+      persistSave();
+      playUiClick();
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+// ===================================================================
+// ===== INPUT =====
+// ===================================================================
+function handleTurnInput(){
+  if (state.mode!=='playing' || state.simPaused || state.introActive) return;
+  state.player.heading = (state.player.heading+1)%4;
+  state.player.inputPulse = 1;
+  playTurnSound();
+}
+
+// Arrow keys / WASD set the heading directly (classic snake-style control),
+// rather than turning relative to the current heading. A direct 180-degree
+// reversal is ignored - same convention as classic Snake - so you can never
+// instantly undo your last move; that irreversibility is core to the puzzle.
+function handleDirectionInput(dir){
+  if (state.mode!=='playing' || state.simPaused || state.introActive) return;
+  var opposite = (state.player.heading+2)%4;
+  if (dir===opposite) return;
+  state.player.inputPulse = 1;
+  if (dir===state.player.heading) return;
+  state.player.heading = dir;
+  playTurnSound();
+}
+
+function findNearestHardWax(grid, size, player){
+  var best = null, bestDist = Infinity;
+  for (var y=0;y<size;y++){
+    for (var x=0;x<size;x++){
+      if (grid[y][x].type==='waxHard'){
+        var d = Math.abs(x-player.x)+Math.abs(y-player.y);
+        if (d<bestDist){ bestDist=d; best={x:x,y:y}; }
+      }
+    }
+  }
+  return best;
+}
+
+function resolveMeltAtTile(x,y){
+  var size = state.level.size;
+  if (!inBounds(x,y,size) || state.grid[y][x].type!=='waxHard') return false;
+  state.grid[y][x].type = 'empty';
+  playMeltSound();
+  spawnParticles(x,y,COL.waxHard,10,{life:0.5,speed:0.9});
+  state.meltTargeting = false;
+  hideMeltBanner();
+  var cb = state.meltCallback; state.meltCallback = null;
+  if (cb) cb();
+  return true;
+}
+
+function onBoardPointerDown(evt){
+  evt.preventDefault();
+  if (state.mode==='editor'){
+    var eg = pixelToGrid(evt.clientX, evt.clientY);
+    editorApplyToolAt(eg.x, eg.y);
+    return;
+  }
+  if (state.mode!=='playing') return;
+  if (state.introActive){ endIntro(); return; }
+  if (state.meltTargeting){
+    var g = pixelToGrid(evt.clientX, evt.clientY);
+    resolveMeltAtTile(g.x, g.y);
+    return;
+  }
+  if (!state.simPaused) handleTurnInput();
+}
+
+var ARROW_DIR_MAP = { ArrowUp:0, KeyW:0, ArrowRight:1, KeyD:1, ArrowDown:2, KeyS:2, ArrowLeft:3, KeyA:3 };
+
+function onKeyDown(evt){
+  if (evt.code==='KeyZ' && state.mode==='playing' && state.undoAssistMode){
+    evt.preventDefault();
+    performUndo();
+    return;
+  }
+  if (ARROW_DIR_MAP.hasOwnProperty(evt.code)){
+    if (state.mode!=='playing') return;
+    evt.preventDefault();
+    if (state.introActive){ endIntro(); return; }
+    if (state.meltTargeting) return;
+    handleDirectionInput(ARROW_DIR_MAP[evt.code]);
+  } else if (evt.code==='Space' || evt.code==='Enter'){
+    if (state.mode!=='playing') return;
+    evt.preventDefault();
+    if (state.introActive){ endIntro(); return; }
+    if (state.meltTargeting){
+      var nearest = findNearestHardWax(state.grid, state.level.size, state.player);
+      if (nearest) resolveMeltAtTile(nearest.x, nearest.y);
+      return;
+    }
+    if (!state.simPaused) handleTurnInput();
+  } else if (evt.code==='Escape'){
+    if (state.mode==='playing'){
+      var pauseOpen = !document.getElementById('overlayPause').classList.contains('hidden');
+      if (pauseOpen) closePauseMenu();
+      else if (!state.simPaused && !state.introActive && !state.reliefChoiceActive && !state.meltTargeting) openPauseMenu();
+    }
+  }
+}
+
+// ===================================================================
+// ===== BUTTON WIRING =====
+// ===================================================================
+function applyLargeTapTargets(on){ document.body.classList.toggle('large-targets', on); }
+
+function wireAllButtons(){
+  document.getElementById('btnPlay').addEventListener('click', function(){
+    playUiClick();
+    startLevel(Math.min(20, Math.max(1, save.unlockedLevel)));
+  });
+  document.getElementById('btnLevelSelect').addEventListener('click', function(){ playUiClick(); showLevelSelectScreen(); });
+  document.getElementById('btnEndless').addEventListener('click', function(){ playUiClick(); startEndless(true); });
+  document.getElementById('btnDaily').addEventListener('click', function(){ playUiClick(); startDaily(); });
+  document.getElementById('btnTimeAttack').addEventListener('click', function(){ playUiClick(); startTimeAttack(); });
+  document.getElementById('btnEditor').addEventListener('click', function(){ playUiClick(); openEditor(null); });
+  document.getElementById('btnAchievements').addEventListener('click', function(){ playUiClick(); setMode('achievements'); });
+  document.getElementById('btnBackFromAchievements').addEventListener('click', function(){ playUiClick(); setMode('menu'); });
+  document.getElementById('btnHowTo').addEventListener('click', function(){ playUiClick(); openHowToFrom('menu'); });
+  document.getElementById('btnSettings').addEventListener('click', function(){ playUiClick(); openSettingsFrom('menu'); });
+  document.getElementById('btnAcceptChallenge').addEventListener('click', function(){
+    playUiClick();
+    document.getElementById('challengeBanner').classList.add('hidden');
+    if (state.incomingChallenge) startLevel(state.incomingChallenge.level);
+  });
+  document.getElementById('btnDismissChallenge').addEventListener('click', function(){
+    playUiClick();
+    document.getElementById('challengeBanner').classList.add('hidden');
+  });
+
+  document.getElementById('btnBackFromLevelSelect').addEventListener('click', function(){ playUiClick(); setMode('menu'); });
+  document.getElementById('btnBackFromHowTo').addEventListener('click', function(){ playUiClick(); closeSettingsOrHowTo(); });
+  document.getElementById('btnHowToDone').addEventListener('click', function(){ playUiClick(); closeSettingsOrHowTo(); });
+  document.getElementById('btnBackFromSettings').addEventListener('click', function(){ playUiClick(); closeSettingsOrHowTo(); });
+
+  function makeToggleHandler(id, getter, setter){
+    var el = document.getElementById(id);
+    el.addEventListener('click', function(){
+      var v = !getter();
+      setter(v);
+      el.classList.toggle('on', v);
+      persistSave();
+    });
+  }
+  makeToggleHandler('toggleMusic', function(){ return settings.music; }, function(v){ settings.music=v; setMusicEnabled(v); });
+  makeToggleHandler('toggleSfx', function(){ return settings.sfx; }, function(v){ settings.sfx=v; setSfxEnabled(v); });
+  makeToggleHandler('toggleReducedMotion', function(){ return settings.reducedMotion; }, function(v){ settings.reducedMotion=v; });
+  makeToggleHandler('toggleColorblind', function(){ return settings.colorblindPalette; }, function(v){ settings.colorblindPalette=v; applyColorblindPalette(v); });
+  makeToggleHandler('toggleLargeTargets', function(){ return settings.largeTapTargets; }, function(v){ settings.largeTapTargets=v; applyLargeTapTargets(v); });
+  makeToggleHandler('toggleFadingWicks', function(){ return settings.mod_fadingWicks; }, function(v){ settings.mod_fadingWicks=v; });
+  makeToggleHandler('toggleOrderedWicks', function(){ return settings.mod_orderedWicks; }, function(v){ settings.mod_orderedWicks=v; });
+  makeToggleHandler('toggleZen', function(){ return settings.mod_zen; }, function(v){ settings.mod_zen=v; });
+  makeToggleHandler('toggleUndoAssist', function(){ return settings.mod_undoAssist; }, function(v){ settings.mod_undoAssist=v; });
+  document.getElementById('btnResetProgress').addEventListener('click', function(){ resetAllProgress(); });
+
+  var segBtns = document.querySelectorAll('#speedGroup .segBtn');
+  for (var i=0;i<segBtns.length;i++){
+    segBtns[i].addEventListener('click', function(){
+      settings.speed = this.getAttribute('data-speed');
+      state.tickInterval = SPEED_PRESETS[settings.speed] || SPEED_PRESETS.normal;
+      syncSettingsUI();
+      persistSave();
+      playUiClick();
+    });
+  }
+
+  var editorToolBtns = document.querySelectorAll('#editorToolGroup .segBtn');
+  for (var et=0; et<editorToolBtns.length; et++){
+    editorToolBtns[et].addEventListener('click', function(){
+      editor.tool = this.getAttribute('data-tool');
+      syncEditorToolUI();
+      playUiClick();
+    });
+  }
+  document.getElementById('btnEditorSizeDown').addEventListener('click', function(){ if (editor.size>6){ editorResize(editor.size-1); playUiClick(); } });
+  document.getElementById('btnEditorSizeUp').addEventListener('click', function(){ if (editor.size<16){ editorResize(editor.size+1); playUiClick(); } });
+  document.getElementById('btnEditorNew').addEventListener('click', function(){ editorNewLevel(); playUiClick(); });
+  document.getElementById('btnEditorPlaytest').addEventListener('click', function(){ playtestFromEditor(); });
+  document.getElementById('btnEditorSave').addEventListener('click', function(){ saveEditorLevel(); });
+  document.getElementById('btnEditorExit').addEventListener('click', function(){ playUiClick(); setMode('menu'); });
+
+  document.getElementById('undoBtn').addEventListener('click', function(){ performUndo(); });
+
+  document.getElementById('pauseBtn').addEventListener('click', function(){
+    if (state.mode==='playing' && !state.introActive && !state.reliefChoiceActive && !state.meltTargeting && !state.simPaused){
+      playUiClick(); openPauseMenu();
+    }
+  });
+  document.getElementById('muteBtn').addEventListener('click', function(){
+    settings.muted = !settings.muted;
+    setMasterMuted(settings.muted);
+    updateMuteBtn();
+    persistSave();
+    playUiClick();
+  });
+  document.getElementById('btnResume').addEventListener('click', function(){ playUiClick(); closePauseMenu(); });
+  document.getElementById('btnRestartLevel').addEventListener('click', function(){
+    playUiClick(); hideAllOverlays();
+    if (state.isEndless) loadLevelFromConfig(getEndlessConfig(state.endlessDepth), (state.endlessSeed+state.endlessDepth*15485863)>>>0);
+    else if (state.isDaily) startDaily();
+    else if (state.isTimeAttack) startTimeAttackLevel(state.timeAttackLevelNum);
+    else if (state.isEditorPlaytest) loadCustomLevel({ name:'Playtest', size:editor.size, grid:editor.grid, startPos:editor.startPos });
+    else startLevel(state.currentLevelNum);
+  });
+  document.getElementById('btnPauseLevelSelect').addEventListener('click', function(){ playUiClick(); commitEndlessProgress(); hideAllOverlays(); showLevelSelectScreen(); });
+  document.getElementById('btnPauseHowTo').addEventListener('click', function(){ playUiClick(); openHowToFrom('pause'); });
+  document.getElementById('btnPauseSettings').addEventListener('click', function(){ playUiClick(); openSettingsFrom('pause'); });
+  document.getElementById('btnQuitToMenu').addEventListener('click', function(){ playUiClick(); commitEndlessProgress(); hideAllOverlays(); setMode('menu'); });
+
+  document.getElementById('btnSaveScreenshot').addEventListener('click', function(){ playUiClick(); shareMazeScreenshot(); });
+  document.getElementById('btnChallengeFriend').addEventListener('click', function(){ shareChallengeLink(); });
+  document.getElementById('btnCompleteRetry').addEventListener('click', function(){ playUiClick(); closeOverlay('overlayLevelComplete'); startLevel(state.currentLevelNum); });
+  document.getElementById('btnCompleteLevelSelect').addEventListener('click', function(){ playUiClick(); closeOverlay('overlayLevelComplete'); showLevelSelectScreen(); });
+
+  document.getElementById('btnTaPlayAgain').addEventListener('click', function(){ playUiClick(); closeOverlay('overlayTimeAttackComplete'); startTimeAttack(); });
+  document.getElementById('btnTaMenu').addEventListener('click', function(){ playUiClick(); closeOverlay('overlayTimeAttackComplete'); setMode('menu'); });
+  document.getElementById('btnDailyMenu').addEventListener('click', function(){ playUiClick(); closeOverlay('overlayDailyComplete'); setMode('menu'); });
+  document.getElementById('btnDailyRetry').addEventListener('click', function(){ playUiClick(); closeOverlay('overlayDailyComplete'); startDaily(); });
+
+  document.getElementById('btnRetry').addEventListener('click', function(){
+    playUiClick(); hideAllOverlays();
+    if (state.isEndless) startEndless(true);
+    else if (state.isDaily) startDaily();
+    else startLevel(state.currentLevelNum);
+  });
+  document.getElementById('btnGameOverLevelSelect').addEventListener('click', function(){ playUiClick(); hideAllOverlays(); showLevelSelectScreen(); });
+  document.getElementById('btnGameOverMenu').addEventListener('click', function(){ playUiClick(); hideAllOverlays(); setMode('menu'); });
+
+  canvas.addEventListener('pointerdown', onBoardPointerDown);
+  document.addEventListener('keydown', onKeyDown);
+  window.addEventListener('resize', function(){ if (state.mode==='playing' || state.mode==='editor') resizeCanvas(); });
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden && state.mode==='playing' && !state.simPaused && !state.introActive && !state.reliefChoiceActive && !state.meltTargeting){
+      openPauseMenu();
+    }
+  });
+  document.addEventListener('pointerdown', function unlock(){ audioInit(); audioResume(); document.removeEventListener('pointerdown', unlock, true); }, true);
+  document.addEventListener('keydown', function unlock2(){ audioInit(); audioResume(); document.removeEventListener('keydown', unlock2, true); }, true);
+}
+
+// ===================================================================
+// ===== MAIN LOOP & INIT =====
+// ===================================================================
+var lastFrameTs = null;
+function gameLoopStep(ts){
+  requestAnimationFrame(gameLoopStep);
+  if (lastFrameTs===null) lastFrameTs = ts;
+  var dtMs = ts - lastFrameTs;
+  lastFrameTs = ts;
+  var dt = Math.min(0.05, Math.max(0,dtMs)/1000);
+
+  if (state.mode==='playing'){
+    if (state.introActive && ts - state.introStartTs >= state.introDuration) endIntro();
+    if (!state.simPaused && !state.introActive){
+      state.gameClock += Math.min(Math.max(0,dtMs), 250);
+      updateSim(dt);
+    }
+  }
+  render(ts, dt);
+}
+
+function init(){
+  initCanvas();
+  loadSave().then(function(){
+    syncSettingsUI();
+    setMusicEnabled(settings.music);
+    setSfxEnabled(settings.sfx);
+    updateMuteBtn();
+    applyFlameTheme(settings.flameTheme);
+    applyColorblindPalette(settings.colorblindPalette);
+    applyLargeTapTargets(settings.largeTapTargets);
+    state.tickInterval = SPEED_PRESETS[settings.speed] || SPEED_PRESETS.normal;
+    wireAllButtons();
+    checkIncomingChallenge();
+    setMode('menu');
+    if (!save.hasSeenHowTo){
+      save.hasSeenHowTo = true;
+      persistSave();
+      openHowToFrom('menu');
+    }
+    requestAnimationFrame(gameLoopStep);
+  });
+}
+
+init();
+</script>
+</body>
+</html>
