@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cataclysm Orbit</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+	<div id="viewport">
+		<canvas id="game-canvas"></canvas>
+		<div id="ui-layer"></div>
+	</div>
+
+	<!-- engine -->
+	<script src="js/engine/canvas-utils.js"></script>
+	<script src="js/data/fish-data.js"></script>
+	<script src="js/data/game-data.js"></script>
+	<script src="js/engine/game-state.js"></script>
+	<script src="js/engine/input.js"></script>
+	<script src="js/engine/audio-mgr.js"></script>
+	<script src="js/engine/game.js"></script>
+
+	<!-- render -->
+	<script src="js/render/draw-cat.js"></script>
+	<script src="js/render/draw-house.js"></script>
+	<script src="js/render/draw-enemies.js"></script>
+	<script src="js/render/draw-fx.js"></script>
+	<script src="js/render/draw-space.js"></script>
+	<script src="js/render/draw-arena.js"></script>
+
+	<!-- scenes -->
+	<script src="js/scenes/start-scene.js"></script>
+	<script src="js/scenes/house-scene.js"></script>
+	<script src="js/scenes/arena-scene.js"></script>
+
+	<script>
+		Game.init();
+	</script>
+</body>
+</html>
